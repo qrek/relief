@@ -1,0 +1,123 @@
+import * as THREE from "three";
+import { advance } from "@react-three/fiber";
+import { useRuntime } from "../runtime";
+
+export type ImageExportOptions = {
+  width: number;
+  height: number;
+  type: "image/png" | "image/jpeg" | "image/webp";
+  quality: number;
+  transparent: boolean;
+  /** Used by "capture from canvas" so a cover never photographs itself. */
+  excludeCovers?: boolean;
+};
+
+export function maxExportSize(): number {
+  const gl = useRuntime.getState().gl;
+  if (!gl) return 4096;
+  return Math.min(gl.capabilities.maxTextureSize, 16384);
+}
+
+/** Flags three sets on the gizmo; which one is present depends on the three version. */
+const HELPER_FLAGS = [
+  "isTransformControls",
+  "isTransformControlsRoot",
+  "isTransformControlsGizmo",
+  "isTransformControlsPlane",
+] as const;
+
+function isEditorHelper(o: THREE.Object3D): boolean {
+  const marked = o as unknown as Record<string, unknown>;
+  return HELPER_FLAGS.some((f) => marked[f] === true) || o.userData?.excludeFromExport === true;
+}
+
+/** Editing aids that belong on screen but never in an exported frame. */
+export function hideEditorHelpers(scene: THREE.Scene, alsoHideCovers = false): THREE.Object3D[] {
+  const hidden: THREE.Object3D[] = [];
+  scene.traverse((o) => {
+    if (!o.visible) return;
+    if (isEditorHelper(o) || (alsoHideCovers && o.userData?.isCover === true)) {
+      o.visible = false;
+      hidden.push(o);
+    }
+  });
+  return hidden;
+}
+
+/**
+ * Renders the scene at an arbitrary resolution and returns the encoded image.
+ * The live canvas is resized for a single frame and restored afterwards.
+ */
+export async function renderImage(opts: ImageExportOptions): Promise<Blob> {
+  const { gl, scene, camera } = useRuntime.getState();
+  if (!gl || !scene || !camera) throw new Error("Renderer not ready");
+
+  const prevSize = gl.getSize(new THREE.Vector2());
+  const prevRatio = gl.getPixelRatio();
+  const prevBackground = scene.background;
+  const prevAlpha = gl.getClearAlpha();
+  const prevAspect = camera.aspect;
+  const hidden = hideEditorHelpers(scene, opts.excludeCovers === true);
+
+  try {
+    gl.setPixelRatio(1);
+    gl.setSize(opts.width, opts.height, false);
+    camera.aspect = opts.width / opts.height;
+    camera.updateProjectionMatrix();
+    if (opts.transparent) {
+      scene.background = null;
+      gl.setClearAlpha(0);
+    }
+    // Going through the frame loop rather than gl.render lets motion, effect
+    // chains and camera-locked backdrops settle on the export camera first.
+    advance(performance.now());
+    const dataUrl = gl.domElement.toDataURL(opts.type, opts.quality);
+    const res = await fetch(dataUrl);
+    return await res.blob();
+  } finally {
+    for (const o of hidden) o.visible = true;
+    scene.background = prevBackground;
+    gl.setClearAlpha(prevAlpha);
+    gl.setPixelRatio(prevRatio);
+    gl.setSize(prevSize.x, prevSize.y, false);
+    camera.aspect = prevAspect;
+    camera.updateProjectionMatrix();
+    gl.render(scene, camera);
+  }
+}
+
+export function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function copyBlobToClipboard(blob: Blob) {
+  if (!("ClipboardItem" in window)) throw new Error("Clipboard images not supported");
+  // Browsers only accept PNG on the clipboard.
+  const png =
+    blob.type === "image/png"
+      ? blob
+      : await new Promise<Blob>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            const c = document.createElement("canvas");
+            c.width = img.width;
+            c.height = img.height;
+            c.getContext("2d")!.drawImage(img, 0, 0);
+            c.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
+          };
+          img.onerror = reject;
+          img.src = URL.createObjectURL(blob);
+        });
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+}
+
+export function extensionFor(type: ImageExportOptions["type"]) {
+  return type === "image/png" ? "png" : type === "image/jpeg" ? "jpg" : "webp";
+}
