@@ -26,6 +26,23 @@ La spécification complète est dans `FEATURES.md` (section 15 = ordre des phase
 - `src/editor/lib` : conversion TTF, extrusion SVG, helpers de géométrie, chargement de modèles et de médias, chaîne d'effets, vignettes, stockage IndexedDB, export image.
 - `src/editor/components` : `Viewport.tsx` (Canvas R3F), `objects/` (meshes), `panels/` (UI), `ui.tsx` (primitives).
 
+## Interface
+Disposition à trois colonnes, dans l'esprit d'un Figma : les outils sont dans la barre du haut,
+la colonne de gauche appartient entièrement à la liste des calques, celle de droite aux propriétés.
+Le cadre est posé sur un fond uni et porte son nom au-dessus, comme un artboard.
+
+Les couleurs sont des variables CSS dans `globals.css` : `--field` pour le fond derrière le cadre,
+`--panel` pour les colonnes, `--raised` pour un contrôle, `--accent` pour le bleu de sélection.
+Ne pas réintroduire de `bg-neutral-*` ni de blanc en accent, tout passe par ces variables.
+
+Le panneau de droite n'a que trois onglets : Design (l'objet sélectionné, avec matière et effets
+empilés en sections), Scene et Export. `PanelId` garde les anciennes valeurs `material` et
+`effects` pour ne pas casser les projets enregistrés ; l'éditeur les ramène sur `object`.
+
+`quality` (Draft, Balanced, Fine) vit hors du projet mais est persisté avec lui : il décrit la
+machine, pas le document. Il fixe le `dpr` du canvas, et sous Fine la profondeur de champ est
+coupée pendant qu'on manipule la caméra ou un gizmo (`runtime.interacting`).
+
 ## Cinq types d'objets
 `SceneObject` est une union : `text` (texte 3D extrudé), `shape` (SVG extrudé), `model` (objet 3D),
 `cover` (image ou vidéo avec une pile d'effets), `label` (typographie plate verrouillée sur le cadre).

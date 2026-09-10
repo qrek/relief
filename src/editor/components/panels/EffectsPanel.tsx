@@ -25,7 +25,7 @@ export function EffectsPanel() {
         Effects run on cover objects: an image or a video placed in the scene.
         <br />
         <br />
-        Add one from the left toolbar, then stack up to {MAX_EFFECTS} effects on it.
+        Add one from the toolbar above, then stack up to {MAX_EFFECTS} effects on it.
       </div>
     );
   }

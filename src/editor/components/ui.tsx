@@ -12,9 +12,9 @@ export function Section({
   right?: ReactNode;
 }) {
   return (
-    <div className="border-b border-white/5 px-3 py-3">
+    <div className="border-b border-[var(--line)] px-3 py-3">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">{title}</h3>
+        <h3 className="text-[11.5px] font-medium text-[var(--ink)]">{title}</h3>
         {right}
       </div>
       <div className="flex flex-col gap-2">{children}</div>
@@ -24,8 +24,8 @@ export function Section({
 
 export function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="grid grid-cols-[88px_1fr] items-center gap-2 text-xs text-neutral-300">
-      <span className="truncate text-neutral-400">{label}</span>
+    <label className="grid grid-cols-[76px_1fr] items-center gap-2 text-[11.5px] text-[var(--ink)]">
+      <span className="truncate text-[var(--ink-dim)]">{label}</span>
       {children}
     </label>
   );
@@ -67,7 +67,7 @@ export function Slider({
           step={usesLog ? 0.001 : step}
           value={toTrack(value)}
           onChange={(e) => onChange(fromTrack(parseFloat(e.target.value)))}
-          className="h-1 flex-1 cursor-pointer accent-white"
+          className="flex-1 cursor-pointer"
         />
         <NumberField value={value} step={step} onChange={onChange} format={format} />
       </div>
@@ -113,7 +113,7 @@ export function NumberField({
         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
       }}
       onChange={(e) => setText(e.target.value)}
-      className={`w-14 rounded bg-white/5 px-1.5 py-1 text-right text-[11px] text-neutral-200 outline-none ring-1 ring-transparent focus:ring-white/20 ${className}`}
+      className={`w-[52px] rounded border border-transparent bg-[var(--field)] px-1.5 py-1 text-right text-[11px] tabular-nums text-[var(--ink)] outline-none transition hover:border-[var(--raised)] focus:border-[var(--accent)] ${className}`}
     />
   );
 }
@@ -140,7 +140,7 @@ export function ColorField({
           type="text"
           value={value}
           onChange={(e) => /^#[0-9a-fA-F]{6}$/.test(e.target.value) && onChange(e.target.value)}
-          className="w-20 rounded bg-white/5 px-1.5 py-1 font-mono text-[11px] uppercase text-neutral-200 outline-none focus:ring-1 focus:ring-white/20"
+          className="w-20 rounded border border-transparent bg-[var(--field)] px-1.5 py-1 font-mono text-[11px] uppercase text-[var(--ink)] outline-none transition hover:border-[var(--raised)] focus:border-[var(--accent)]"
         />
       </div>
     </Row>
@@ -163,10 +163,10 @@ export function SelectField<T extends string>({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className="w-full rounded bg-white/5 px-2 py-1 text-xs text-neutral-200 outline-none focus:ring-1 focus:ring-white/20"
+        className="w-full rounded border border-transparent bg-[var(--field)] px-2 py-1 text-[11.5px] text-[var(--ink)] outline-none transition hover:border-[var(--raised)] focus:border-[var(--accent)]"
       >
         {options.map((o) => (
-          <option key={o.value} value={o.value} className="bg-neutral-900">
+          <option key={o.value} value={o.value} className="bg-[var(--panel)]">
             {o.label}
           </option>
         ))}
@@ -191,11 +191,11 @@ export function Toggle({
         role="switch"
         aria-checked={value}
         onClick={() => onChange(!value)}
-        className={`relative h-5 w-9 rounded-full transition ${value ? "bg-white" : "bg-white/15"}`}
+        className={`relative h-[18px] w-8 rounded-full transition ${value ? "bg-[var(--accent)]" : "bg-[var(--raised)]"}`}
       >
         <span
-          className={`absolute top-0.5 h-4 w-4 rounded-full transition ${
-            value ? "left-[18px] bg-black" : "left-0.5 bg-neutral-300"
+          className={`absolute top-0.5 h-[14px] w-[14px] rounded-full bg-white transition ${
+            value ? "left-[16px]" : "left-0.5"
           }`}
         />
       </button>
@@ -221,7 +221,7 @@ export function TextField({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded bg-white/5 px-2 py-1 text-xs text-neutral-200 outline-none focus:ring-1 focus:ring-white/20"
+        className="w-full rounded border border-transparent bg-[var(--field)] px-2 py-1 text-[11.5px] text-[var(--ink)] outline-none transition hover:border-[var(--raised)] focus:border-[var(--accent)]"
       />
     </Row>
   );
@@ -243,9 +243,9 @@ export function Button({
   className?: string;
 }) {
   const styles = {
-    default: "bg-white/10 hover:bg-white/15 text-neutral-100",
-    primary: "bg-white text-black hover:bg-neutral-200",
-    ghost: "bg-transparent hover:bg-white/10 text-neutral-300",
+    default: "bg-[var(--raised)] hover:brightness-125 text-[var(--ink)]",
+    primary: "bg-[var(--accent)] text-white hover:bg-[var(--accent-press)]",
+    ghost: "bg-transparent hover:bg-[var(--raised)] text-[var(--ink-dim)] hover:text-[var(--ink)]",
     danger: "bg-red-500/15 text-red-300 hover:bg-red-500/25",
   }[variant];
   return (
@@ -254,7 +254,7 @@ export function Button({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${styles} ${className}`}
+      className={`rounded px-2.5 py-1.5 text-[11.5px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${styles} ${className}`}
     >
       {children}
     </button>

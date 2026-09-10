@@ -24,7 +24,7 @@ export function ObjectPanel() {
   if (!obj) {
     return (
       <div className="p-4 text-xs leading-relaxed text-neutral-500">
-        Select an object in the viewport or the layers list, or add a new one from the left toolbar.
+        Select an object in the viewport or the layers list, or add a new one from the toolbar above.
         <br />
         <br />
         Shift-click a mesh to give that layer its own material.

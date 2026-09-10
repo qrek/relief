@@ -16,12 +16,12 @@ export function LayersPanel() {
   const partsById = useRuntime((s) => s.parts);
 
   return (
-    <div className="flex max-h-[52vh] flex-col">
-      <div className="flex items-center justify-between px-3 py-2">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">Layers</h3>
-        <span className="text-[11px] text-neutral-600">{objects.length}</span>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between border-b border-[var(--line)] px-3 py-2.5">
+        <h3 className="text-[11.5px] font-medium text-[var(--ink)]">Layers</h3>
+        <span className="text-[11px] text-[var(--ink-faint)]">{objects.length}</span>
       </div>
-      <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1.5 pb-2">
+      <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto p-1.5">
         {[...objects].reverse().map((o, idx) => {
           const active = o.id === selectedId;
           const parts = partsById[o.id] ?? [];
@@ -30,11 +30,15 @@ export function LayersPanel() {
             <li key={o.id}>
               <div
                 onClick={() => select(o.id)}
-                className={`group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs ${
-                  active ? "bg-white/15 text-white" : "text-neutral-300 hover:bg-white/5"
+                className={`group flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[11.5px] ${
+                  active
+                    ? "bg-[var(--accent)] text-white"
+                    : "text-[var(--ink-dim)] hover:bg-[var(--raised)] hover:text-[var(--ink)]"
                 }`}
               >
-                <span className="w-4 text-center text-[10px] text-neutral-500">{icon}</span>
+                <span className={`w-4 text-center text-[10px] ${active ? "text-white/70" : "text-[var(--ink-faint)]"}`}>
+                  {icon}
+                </span>
                 <span
                   className={`flex-1 truncate ${o.visible ? "" : "line-through opacity-50"} ${
                     o.locked ? "opacity-60" : ""

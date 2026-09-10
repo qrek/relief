@@ -3,8 +3,8 @@
 import { useRef, useState } from "react";
 import { useEditor } from "../../store";
 import type { Project } from "../../types";
-import { Button } from "../ui";
 import { SceneLibrary } from "./SceneLibrary";
+import { Toolbar } from "./Toolbar";
 
 export function TopBar() {
   const project = useEditor((s) => s.project);
@@ -31,43 +31,55 @@ export function TopBar() {
   };
 
   return (
-    <header className="relative flex h-12 items-center gap-3 border-b border-white/5 bg-neutral-900 px-3">
-      <div className="flex items-center gap-2">
-        <span className="grid h-6 w-6 place-items-center rounded-md bg-white text-[11px] font-bold text-black">R</span>
-        <span className="text-sm font-semibold tracking-tight text-neutral-100">Relief</span>
+    <header className="relative z-30 flex h-12 shrink-0 items-center gap-2 border-b border-[var(--line)] bg-[var(--panel)] px-2">
+      <span className="grid h-8 w-8 place-items-center rounded bg-[var(--accent)] text-[12px] font-bold text-white">
+        R
+      </span>
+
+      <span className="mx-1 h-5 w-px bg-[var(--line)]" />
+
+      <Toolbar />
+
+      <div className="flex flex-1 items-center justify-center gap-1">
+        <BarButton onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+          &#8624;
+        </BarButton>
+        <BarButton onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
+          &#8625;
+        </BarButton>
+        <input
+          value={project.name}
+          onChange={(e) => renameProject(e.target.value)}
+          spellCheck={false}
+          className="w-56 rounded bg-transparent px-2 py-1 text-center text-[12px] text-[var(--ink)] outline-none transition hover:bg-[var(--raised)] focus:bg-[var(--raised)]"
+        />
       </div>
-      <div className="mx-2 h-5 w-px bg-white/10" />
-      <input
-        value={project.name}
-        onChange={(e) => renameProject(e.target.value)}
-        className="w-48 rounded bg-transparent px-2 py-1 text-sm text-neutral-200 outline-none hover:bg-white/5 focus:bg-white/5"
-      />
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-          Undo
-        </Button>
-        <Button variant="ghost" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
-          Redo
-        </Button>
-      </div>
-      <div className="flex-1" />
-      <Button variant="ghost" onClick={() => setHelpOpen((v) => !v)} title="Keyboard shortcuts">
-        ?
-      </Button>
-      <Button variant="default" onClick={() => setScenesOpen(true)} title="Your saved scenes">
+
+      <BarButton onClick={() => setScenesOpen(true)} title="Scenes you have saved">
         Scenes
-      </Button>
-      <Button
-        variant="ghost"
+      </BarButton>
+      <BarButton
         onClick={() => {
-          if (confirm("Start a new project? The current one stays in your browser history only until replaced.")) newProject();
+          if (confirm("Start a new project? The current one stays in your browser history only until replaced.")) {
+            newProject();
+          }
         }}
       >
         New
-      </Button>
-      <Button variant="ghost" onClick={() => fileRef.current?.click()}>
-        Open
-      </Button>
+      </BarButton>
+      <BarButton onClick={() => fileRef.current?.click()}>Open</BarButton>
+      <BarButton onClick={exportJson}>Save file</BarButton>
+      <BarButton onClick={() => setHelpOpen((v) => !v)} title="Keyboard shortcuts" active={helpOpen}>
+        ?
+      </BarButton>
+      <button
+        type="button"
+        onClick={() => setActivePanel("export")}
+        className="ml-1 rounded bg-[var(--accent)] px-3 py-1.5 text-[12px] font-medium text-white transition hover:bg-[var(--accent-press)]"
+      >
+        Export
+      </button>
+
       <input
         ref={fileRef}
         type="file"
@@ -86,43 +98,68 @@ export function TopBar() {
           e.target.value = "";
         }}
       />
-      <Button variant="ghost" onClick={exportJson}>
-        Save file
-      </Button>
-      <Button variant="primary" onClick={() => setActivePanel("export")}>
-        Export
-      </Button>
 
       {scenesOpen && <SceneLibrary onClose={() => setScenesOpen(false)} />}
 
       {helpOpen && (
-        <div className="absolute right-3 top-12 z-30 w-72 rounded-lg border border-white/10 bg-neutral-900 p-3 text-xs text-neutral-300 shadow-2xl">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">Shortcuts</div>
-          <ul className="grid grid-cols-[1fr_auto] gap-y-1">
+        <div className="absolute right-2 top-12 z-40 w-80 rounded-md border border-[var(--line)] bg-[var(--panel)] p-3.5 text-[11.5px] text-[var(--ink-dim)] shadow-2xl">
+          <div className="mb-2.5 text-[11px] font-medium text-[var(--ink)]">Shortcuts</div>
+          <ul className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5">
             {[
               ["Move / Rotate / Scale", "W / E / R"],
-              ["Add 3D text / shapes / objects / cover / flat type", "T / S / O / C / L"],
+              ["Add 3D type, shape, object, cover, flat type", "T / S / O / C / L"],
               ["Pull focus onto a point", "F"],
               ["Frame the selection", "Shift + F"],
               ["Pick one layer of an object", "Shift + click"],
-              ["Delete selection", "Del"],
-              ["Duplicate", "Ctrl + D"],
-              ["Deselect", "Esc"],
+              ["Delete / Duplicate", "Del / Ctrl + D"],
+              ["Deselect, or close what is open", "Esc"],
               ["Undo / Redo", "Ctrl + Z / Ctrl + Shift + Z"],
-              ["Export image", "Ctrl + E"],
-              ["Panels: object, material, effects, staging, export", "1 to 5"],
+              ["Panels: object, material, effects, scene, export", "1 to 5"],
+              ["Export", "Ctrl + E"],
             ].map(([k, v]) => (
               <li key={k} className="contents">
                 <span>{k}</span>
-                <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-neutral-200">{v}</kbd>
+                <kbd className="rounded bg-[var(--raised)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--ink)]">
+                  {v}
+                </kbd>
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-[11px] text-neutral-500">
-            Your project is saved automatically in this browser. Use Save file to keep a copy.
+          <p className="mt-3 text-[11px] leading-relaxed text-[var(--ink-faint)]">
+            The project is saved in this browser as you work. Save file keeps a copy you can carry.
           </p>
         </div>
       )}
     </header>
+  );
+}
+
+function BarButton({
+  children,
+  onClick,
+  disabled,
+  title,
+  active,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  title?: string;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`rounded px-2 py-1.5 text-[12px] transition disabled:cursor-not-allowed disabled:opacity-30 ${
+        active
+          ? "bg-[var(--raised)] text-[var(--ink)]"
+          : "text-[var(--ink-dim)] hover:bg-[var(--raised)] hover:text-[var(--ink)]"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

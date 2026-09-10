@@ -6,7 +6,6 @@ import { useEditor, type PanelId } from "../store";
 import { useRuntime } from "../runtime";
 import { Viewport } from "./Viewport";
 import { TopBar } from "./panels/TopBar";
-import { ToolRail } from "./panels/ToolRail";
 import { LayersPanel } from "./panels/LayersPanel";
 import { ObjectPanel } from "./panels/ObjectPanel";
 import { MaterialPanel } from "./panels/MaterialPanel";
@@ -15,42 +14,46 @@ import { StagingPanel } from "./panels/StagingPanel";
 import { ExportPanel } from "./panels/ExportPanel";
 
 const PANELS: { id: PanelId; label: string }[] = [
-  { id: "object", label: "Object" },
-  { id: "material", label: "Material" },
-  { id: "effects", label: "Effects" },
-  { id: "staging", label: "Staging" },
+  { id: "object", label: "Design" },
+  { id: "staging", label: "Scene" },
   { id: "export", label: "Export" },
 ];
 
 export default function Editor() {
   const activePanel = useEditor((s) => s.activePanel);
   const setActivePanel = useEditor((s) => s.setActivePanel);
+  const selectedId = useEditor((s) => s.selectedId);
 
   useKeyboardShortcuts();
   useLayoutNudge();
 
+  // Material and effects are no longer tabs of their own: they are sections of
+  // the design column, so anything still pointing at them lands there.
+  const tab: PanelId = activePanel === "material" || activePanel === "effects" ? "object" : activePanel;
+
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-neutral-950 text-neutral-200 select-none">
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-[var(--field)] text-[var(--ink)] select-none">
       <TopBar />
       <div className="flex min-h-0 flex-1">
-        <ToolRail />
+        <aside className="flex w-60 shrink-0 flex-col border-r border-[var(--line)] bg-[var(--panel)]">
+          <LayersPanel />
+        </aside>
+
         <div className="relative min-w-0 flex-1">
           <Viewport />
-          <div className="absolute left-3 top-3 w-56 rounded-lg border border-white/10 bg-neutral-900/90 backdrop-blur">
-            <LayersPanel />
-          </div>
         </div>
-        <aside className="flex w-80 flex-col border-l border-white/5 bg-neutral-900">
-          <nav className="flex border-b border-white/5">
+
+        <aside className="flex w-60 shrink-0 flex-col border-l border-[var(--line)] bg-[var(--panel)]">
+          <nav className="flex shrink-0 gap-0.5 border-b border-[var(--line)] px-2 py-1.5">
             {PANELS.map((p) => (
               <button
                 key={p.id}
                 type="button"
                 onClick={() => setActivePanel(p.id)}
-                className={`flex-1 py-2.5 text-xs font-medium transition ${
-                  activePanel === p.id
-                    ? "border-b-2 border-white text-white"
-                    : "text-neutral-500 hover:text-neutral-200"
+                className={`flex-1 rounded py-1 text-[11.5px] font-medium transition ${
+                  tab === p.id
+                    ? "bg-[var(--raised)] text-[var(--ink)]"
+                    : "text-[var(--ink-faint)] hover:text-[var(--ink-dim)]"
                 }`}
               >
                 {p.label}
@@ -58,11 +61,15 @@ export default function Editor() {
             ))}
           </nav>
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {activePanel === "object" && <ObjectPanel />}
-            {activePanel === "material" && <MaterialPanel />}
-            {activePanel === "effects" && <EffectsPanel />}
-            {activePanel === "staging" && <StagingPanel />}
-            {activePanel === "export" && <ExportPanel />}
+            {tab === "object" && (
+              <>
+                <ObjectPanel />
+                {selectedId && <MaterialPanel />}
+                {selectedId && <EffectsPanel />}
+              </>
+            )}
+            {tab === "staging" && <StagingPanel />}
+            {tab === "export" && <ExportPanel />}
           </div>
         </aside>
       </div>
@@ -191,15 +198,9 @@ function useKeyboardShortcuts() {
           s.setActivePanel("object");
           break;
         case "2":
-          s.setActivePanel("material");
-          break;
-        case "3":
-          s.setActivePanel("effects");
-          break;
-        case "4":
           s.setActivePanel("staging");
           break;
-        case "5":
+        case "3":
           s.setActivePanel("export");
           break;
       }
