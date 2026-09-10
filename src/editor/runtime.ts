@@ -22,6 +22,9 @@ type RuntimeState = {
   /** While armed, the next click in the viewport pulls focus to what it hits. */
   focusPicking: boolean;
   setFocusPicking: (picking: boolean) => void;
+  /** True while the camera or a gizmo is being dragged, so the frame can be cheap. */
+  interacting: boolean;
+  setInteracting: (interacting: boolean) => void;
 };
 
 const sameParts = (a: PartInfo[] | undefined, b: PartInfo[]) =>
@@ -61,6 +64,10 @@ export const useRuntime = create<RuntimeState>((set, get) => ({
   requestCameraReset: () => set((s) => ({ resetCameraSignal: s.resetCameraSignal + 1 })),
   focusPicking: false,
   setFocusPicking: (focusPicking) => set({ focusPicking }),
+  interacting: false,
+  setInteracting: (interacting) => {
+    if (get().interacting !== interacting) set({ interacting });
+  },
 }));
 
 export const usePartsOf = (id: string | null) =>

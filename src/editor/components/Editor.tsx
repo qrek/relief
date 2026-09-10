@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as THREE from "three";
 import { useEditor, type PanelId } from "../store";
 import { useRuntime } from "../runtime";
 import { Viewport } from "./Viewport";
@@ -88,6 +89,25 @@ function useLayoutNudge() {
   }, []);
 }
 
+/** Frames the selection: swings the camera in until the object fills the shot. */
+function frameSelection() {
+  const { camera, objects } = useRuntime.getState();
+  const { selectedId, setCamera, setStaging } = useEditor.getState();
+  const target = selectedId ? objects[selectedId] : undefined;
+  if (!camera || !target) return;
+
+  const box = new THREE.Box3().setFromObject(target);
+  const centre = box.getCenter(new THREE.Vector3());
+  const radius = Math.max(0.3, box.getSize(new THREE.Vector3()).length() * 0.5);
+  const distance = (radius * 1.9) / Math.tan((camera.fov * Math.PI) / 360);
+  const direction = camera.position.clone().sub(centre).normalize();
+  const position = centre.clone().addScaledVector(direction, distance);
+
+  setCamera(position.toArray() as [number, number, number], centre.toArray() as [number, number, number]);
+  setStaging({ focusDistance: distance }, false);
+  useRuntime.getState().requestCameraReset();
+}
+
 function useKeyboardShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -123,8 +143,9 @@ function useKeyboardShortcuts() {
           if (s.selectedId) s.removeObject(s.selectedId);
           break;
         case "Escape":
-          // Close the add-object popover first, then drop the selection.
-          if (s.library) s.setLibrary(null);
+          // Close whatever is open, outermost first, then drop the selection.
+          if (useRuntime.getState().focusPicking) useRuntime.getState().setFocusPicking(false);
+          else if (s.library) s.setLibrary(null);
           else if (s.selectedPartId) s.selectPart(null);
           else s.select(null);
           break;
@@ -159,6 +180,12 @@ function useKeyboardShortcuts() {
         case "c":
         case "C":
           s.setLibrary(s.library === "media" ? null : "media");
+          break;
+        case "f":
+        case "F":
+          // Shift frames the selection; on its own it arms a focus pull.
+          if (e.shiftKey) frameSelection();
+          else useRuntime.getState().setFocusPicking(!useRuntime.getState().focusPicking);
           break;
         case "1":
           s.setActivePanel("object");

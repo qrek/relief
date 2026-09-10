@@ -102,6 +102,8 @@ export function TopBar() {
             {[
               ["Move / Rotate / Scale", "W / E / R"],
               ["Add 3D text / shapes / objects / cover / flat type", "T / S / O / C / L"],
+              ["Pull focus onto a point", "F"],
+              ["Frame the selection", "Shift + F"],
               ["Pick one layer of an object", "Shift + click"],
               ["Delete selection", "Del"],
               ["Duplicate", "Ctrl + D"],

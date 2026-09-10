@@ -31,6 +31,14 @@ import {
 
 export type TransformMode = "translate" | "rotate" | "scale";
 export type PanelId = "object" | "material" | "effects" | "staging" | "export";
+
+/**
+ * How much the viewport is allowed to spend on a frame. Draft is for a laptop
+ * on battery, Fine for judging an image just before export. It belongs to the
+ * machine sitting in front of the editor, not to the document, but it is
+ * persisted alongside it so a slow machine stays set.
+ */
+export type Quality = "draft" | "balanced" | "fine";
 /** Which add-object popover the tool rail is showing. */
 export type LibraryId = "shapes" | "objects" | "media" | null;
 
@@ -260,6 +268,7 @@ type EditorState = {
   selectedPartId: string | null;
   transformMode: TransformMode;
   activePanel: PanelId;
+  quality: Quality;
   library: LibraryId;
   /** Shows the platform margins guide over the canvas. */
   safeAreas: boolean;
@@ -270,6 +279,7 @@ type EditorState = {
   selectPart: (partId: string | null) => void;
   setTransformMode: (m: TransformMode) => void;
   setActivePanel: (p: PanelId) => void;
+  setQuality: (q: Quality) => void;
   setLibrary: (l: LibraryId) => void;
   setSafeAreas: (v: boolean) => void;
 
@@ -356,6 +366,7 @@ export const useEditor = create<EditorState>()(
         selectedPartId: null,
         transformMode: "translate",
         activePanel: "object",
+        quality: "balanced",
         library: null,
         safeAreas: false,
         past: [],
@@ -365,6 +376,7 @@ export const useEditor = create<EditorState>()(
         selectPart: (selectedPartId) => set({ selectedPartId }),
         setTransformMode: (transformMode) => set({ transformMode }),
         setActivePanel: (activePanel) => set({ activePanel }),
+        setQuality: (quality) => set({ quality }),
         setLibrary: (library) => set({ library }),
         setSafeAreas: (safeAreas) => set({ safeAreas }),
 
@@ -595,10 +607,11 @@ export const useEditor = create<EditorState>()(
     {
       name: "relief-project",
       version: PERSIST_VERSION,
-      partialize: (s) => ({ project: s.project }),
+      partialize: (s) => ({ project: s.project, quality: s.quality }),
       migrate: (persisted) => {
-        const state = persisted as { project?: unknown } | undefined;
-        return { project: normalizeProject(state?.project) } as { project: Project };
+        const state = persisted as { project?: unknown; quality?: unknown } | undefined;
+        const quality: Quality = state?.quality === "draft" || state?.quality === "fine" ? state.quality : "balanced";
+        return { project: normalizeProject(state?.project), quality } as { project: Project; quality: Quality };
       },
     },
   ),

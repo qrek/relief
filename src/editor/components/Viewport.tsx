@@ -10,7 +10,7 @@ import {
 } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { currentFormat, useEditor } from "../store";
+import { currentFormat, useEditor, type Quality } from "../store";
 import { useRuntime } from "../runtime";
 import type { Motion, PartInfo, SceneObject, Staging } from "../types";
 import { DepthOfFieldPass, focalToFov } from "../lib/postFx";
@@ -30,10 +30,22 @@ import { EFFECTS } from "../presets/effects";
 import { renderVideo } from "../lib/video";
 import { exportImageSet, exportVideoSet, frameForAspect, zipFiles } from "../lib/batch";
 
+/**
+ * How many device pixels a frame may cost. Draft renders below the screen's own
+ * resolution, which is the largest saving available and costs nothing that
+ * matters while a shot is still being blocked out.
+ */
+const DPR_FOR_QUALITY: Record<Quality, [number, number]> = {
+  draft: [0.6, 1],
+  balanced: [1, 1.5],
+  fine: [1, 2],
+};
+
 /** Sizes the canvas to the active format's aspect ratio inside the available area. */
 export function Viewport() {
   const project = useEditor((s) => s.project);
   const format = currentFormat(project);
+  const quality = useEditor((s) => s.quality);
   const outer = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
@@ -91,7 +103,7 @@ export function Viewport() {
         <FocusPickerHint />
         <Canvas
           shadows
-          dpr={[1, 2]}
+          dpr={DPR_FOR_QUALITY[quality]}
           // The drawing buffer is kept so video export can read frames back after awaiting the encoder.
           gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
           camera={{ fov: project.staging.fov, position: project.camera.position, near: 0.1, far: 200 }}
@@ -128,6 +140,34 @@ function FocusPickerHint() {
   );
 }
 
+/** Draft, Balanced or Fine: how much a viewport frame is allowed to cost. */
+function QualityPicker() {
+  const quality = useEditor((s) => s.quality);
+  const setQuality = useEditor((s) => s.setQuality);
+  const hints: Record<Quality, string> = {
+    draft: "Fewer pixels, and no blur while you move. For a laptop on battery.",
+    balanced: "Full pixels, and the blur settles as soon as you let go.",
+    fine: "Everything, all the time. For judging an image before export.",
+  };
+  return (
+    <div className="flex items-center gap-0.5">
+      {(["draft", "balanced", "fine"] as Quality[]).map((q) => (
+        <button
+          key={q}
+          type="button"
+          title={hints[q]}
+          onClick={() => setQuality(q)}
+          className={`rounded-full px-2 py-0.5 text-[11px] capitalize transition ${
+            quality === q ? "bg-white text-black" : "text-neutral-400 hover:bg-white/10"
+          }`}
+        >
+          {q}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function FormatBadge() {
   const project = useEditor((s) => s.project);
   const setFormat = useEditor((s) => s.setFormat);
@@ -155,6 +195,8 @@ function FormatBadge() {
       <span className="text-neutral-500">
         {f.width} × {f.height}
       </span>
+      <span className="h-3 w-px bg-white/10" />
+      <QualityPicker />
       {hasSafe && (
         <button
           type="button"
@@ -318,7 +360,9 @@ function SceneContent() {
         <TransformControls
           object={selectedObj3D}
           mode={transformMode}
+          onMouseDown={() => useRuntime.getState().setInteracting(true)}
           onMouseUp={() => {
+            useRuntime.getState().setInteracting(false);
             const o = selectedObj3D;
             if (!selectedId) return;
             setTransform(selectedId, {
@@ -335,7 +379,9 @@ function SceneContent() {
         makeDefault
         enableDamping
         dampingFactor={0.1}
+        onStart={() => useRuntime.getState().setInteracting(true)}
         onEnd={() => {
+          useRuntime.getState().setInteracting(false);
           const c = controls.current;
           if (!c) return;
           setCamera(
@@ -439,10 +485,15 @@ function ClockDriver() {
  */
 function SceneRenderer({ staging }: { staging: Staging }) {
   const pass = useMemo(() => new DepthOfFieldPass(), []);
+  const quality = useEditor((s) => s.quality);
   useEffect(() => () => pass.dispose(), [pass]);
 
   useFrame(({ gl, scene, camera }) => {
-    if (!staging.depthOfField) {
+    // Depth of field is the most expensive thing in the frame and the least
+    // useful mid-drag, when the eye follows motion rather than judging an edge.
+    // Fine keeps it on regardless, for the moment just before an export.
+    const busy = quality !== "fine" && useRuntime.getState().interacting;
+    if (!staging.depthOfField || busy) {
       gl.render(scene, camera);
       return;
     }
