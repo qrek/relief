@@ -56,7 +56,7 @@ export function ExportPanel() {
             type="button"
             onClick={() => setMode(m)}
             className={`flex-1 rounded-md py-1.5 text-xs font-medium capitalize transition ${
-              mode === m ? "bg-white text-black" : "bg-white/10 text-neutral-300 hover:bg-white/15"
+              mode === m ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-white/10 text-neutral-300 hover:bg-white/15"
             }`}
           >
             {m}
@@ -96,7 +96,7 @@ function FormatPicker({
                   onClick={() => onToggle(f.id)}
                   title={`${f.width} × ${f.height}`}
                   className={`rounded-full px-2 py-0.5 text-[11px] transition ${
-                    on ? "bg-white text-black" : "bg-white/10 text-neutral-300 hover:bg-white/15"
+                    on ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-white/10 text-neutral-300 hover:bg-white/15"
                   } ${f.id === activeId && !on ? "ring-1 ring-white/30" : ""}`}
                 >
                   {f.name}

@@ -25,7 +25,7 @@ export function EffectsPanel() {
         Effects run on cover objects: an image or a video placed in the scene.
         <br />
         <br />
-        Add one from the toolbar above, then stack up to {MAX_EFFECTS} effects on it.
+        Add one from the left toolbar, then stack up to {MAX_EFFECTS} effects on it.
       </div>
     );
   }
@@ -88,7 +88,7 @@ function EffectPicker({ onPick }: { onPick: (effectId: string) => void }) {
             type="button"
             onClick={() => setCategory(c)}
             className={`rounded-full px-2 py-0.5 text-[11px] ${
-              category === c ? "bg-white text-black" : "bg-white/10 text-neutral-300 hover:bg-white/15"
+              category === c ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-white/10 text-neutral-300 hover:bg-white/15"
             }`}
           >
             {c}

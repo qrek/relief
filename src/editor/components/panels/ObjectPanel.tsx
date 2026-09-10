@@ -24,7 +24,7 @@ export function ObjectPanel() {
   if (!obj) {
     return (
       <div className="p-4 text-xs leading-relaxed text-neutral-500">
-        Select an object in the viewport or the layers list, or add a new one from the toolbar above.
+        Select an object in the viewport or the layers list, or add a new one from the left toolbar.
         <br />
         <br />
         Shift-click a mesh to give that layer its own material.
@@ -119,7 +119,7 @@ function LabelFields({ obj }: { obj: LabelObject }) {
           onChange={(e) =>
             updateObject(obj.id, { text: e.target.value, name: e.target.value.split("\n")[0] || "Label" })
           }
-          className="w-full resize-y rounded bg-white/5 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:ring-1 focus:ring-white/20"
+          className="w-full resize-y rounded bg-white/5 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:ring-1 focus:ring-[var(--accent-edge)]"
         />
       </label>
       <SelectField
@@ -352,7 +352,7 @@ function TextFields({ obj }: { obj: TextObject }) {
           onChange={(e) =>
             updateObject(obj.id, { text: e.target.value, name: e.target.value.split("\n")[0] || "Text" })
           }
-          className="w-full resize-y rounded bg-white/5 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:ring-1 focus:ring-white/20"
+          className="w-full resize-y rounded bg-white/5 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:ring-1 focus:ring-[var(--accent-edge)]"
         />
       </label>
       <SelectField

@@ -163,7 +163,7 @@ export function MaterialPanel() {
               type="button"
               onClick={() => selectPart(null)}
               className={`rounded-full px-2 py-0.5 text-[11px] ${
-                selectedPartId === null ? "bg-white text-black" : "bg-white/10 text-neutral-300 hover:bg-white/15"
+                selectedPartId === null ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-white/10 text-neutral-300 hover:bg-white/15"
               }`}
             >
               All layers
@@ -174,7 +174,7 @@ export function MaterialPanel() {
                 type="button"
                 onClick={() => selectPart(p.id)}
                 className={`rounded-full px-2 py-0.5 text-[11px] ${
-                  selectedPartId === p.id ? "bg-white text-black" : "bg-white/10 text-neutral-300 hover:bg-white/15"
+                  selectedPartId === p.id ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-white/10 text-neutral-300 hover:bg-white/15"
                 } ${obj.parts[p.id] ? "ring-1 ring-emerald-400/60" : ""}`}
                 title={obj.parts[p.id] ? `${p.name} has its own material` : p.name}
               >
@@ -198,7 +198,7 @@ export function MaterialPanel() {
               type="button"
               onClick={() => setCategory(c)}
               className={`rounded-full px-2 py-0.5 text-[11px] ${
-                category === c ? "bg-white text-black" : "bg-white/10 text-neutral-300 hover:bg-white/15"
+                category === c ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-white/10 text-neutral-300 hover:bg-white/15"
               }`}
             >
               {c}
@@ -213,7 +213,7 @@ export function MaterialPanel() {
               title={p.name}
               onClick={() => applyPreset(p.id)}
               className={`group flex flex-col items-center gap-1 rounded-md p-1 ${
-                target.materialPresetId === p.id ? "bg-white/15 ring-1 ring-white/40" : "hover:bg-white/10"
+                target.materialPresetId === p.id ? "bg-[var(--accent-soft)] ring-1 ring-[var(--accent-edge)]" : "hover:bg-white/10"
               }`}
             >
               <span className="h-11 w-11 rounded-full ring-1 ring-white/10" style={swatchStyle(p)} />

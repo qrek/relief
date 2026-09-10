@@ -85,7 +85,7 @@ export function ObjectLibrary({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={() => setCollection(c)}
             className={`rounded-full px-2.5 py-1 text-[11px] transition ${
-              collection === c ? "bg-white text-black" : "bg-white/10 text-neutral-300 hover:bg-white/15"
+              collection === c ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-white/10 text-neutral-300 hover:bg-white/15"
             }`}
           >
             {c}

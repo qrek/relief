@@ -83,9 +83,9 @@ export function Viewport() {
   const transparent = project.staging.transparent && !project.staging.envAsBackground;
 
   return (
-    <div ref={outer} className="absolute inset-0 flex items-center justify-center overflow-hidden bg-[var(--field)]">
+    <div ref={outer} className="absolute inset-0 flex items-center justify-center overflow-hidden bg-neutral-950">
       <div
-        className="relative shadow-2xl shadow-black/60 ring-1 ring-black/40"
+        className="relative shadow-2xl shadow-black/60 ring-1 ring-white/10"
         style={{
           // Falls back to filling the area until the first measurement lands, so the
           // renderer always starts even if layout reports zero on the first frame.
@@ -99,10 +99,6 @@ export function Viewport() {
           backgroundColor: transparent ? "#1c1c1c" : undefined,
         }}
       >
-        {/* The frame carries its own name, the way an artboard does. */}
-        <span className="absolute -top-5 left-0 truncate text-[11px] text-[var(--ink-faint)]">
-          {project.name || "Untitled"}
-        </span>
         <SafeAreaOverlay />
         <FocusPickerHint />
         <Canvas
@@ -134,9 +130,9 @@ function FocusPickerHint() {
   if (!picking) return null;
   return (
     <div className="pointer-events-none absolute inset-0 z-20 cursor-crosshair">
-      <div className="pointer-events-auto absolute left-1/2 top-4 -translate-x-1/2 rounded-md bg-[var(--accent)] px-3 py-1 text-[11px] font-medium text-white shadow-lg">
+      <div className="pointer-events-auto absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-[11px] font-medium text-neutral-900 shadow">
         Click a point to pull focus there
-        <button className="ml-2 opacity-70 transition hover:opacity-100" onClick={() => setFocusPicking(false)}>
+        <button className="ml-2 text-neutral-500 hover:text-neutral-900" onClick={() => setFocusPicking(false)}>
           Cancel
         </button>
       </div>
@@ -161,8 +157,8 @@ function QualityPicker() {
           type="button"
           title={hints[q]}
           onClick={() => setQuality(q)}
-          className={`rounded px-2 py-0.5 text-[11px] capitalize transition ${
-            quality === q ? "bg-[var(--accent)] text-white" : "text-[var(--ink-faint)] hover:text-[var(--ink)]"
+          className={`rounded-full px-2 py-0.5 text-[11px] capitalize transition ${
+            quality === q ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "text-neutral-400 hover:bg-white/10"
           }`}
         >
           {q}
@@ -180,34 +176,34 @@ function FormatBadge() {
   const f = currentFormat(project);
   const hasSafe = safeAreaFor(project.formatId) !== null;
   return (
-    <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-md border border-[var(--line)] bg-[var(--panel)] px-2.5 py-1.5 text-[11.5px] text-[var(--ink-dim)] shadow-lg">
+    <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-neutral-900/90 px-3 py-1.5 text-xs text-neutral-300 ring-1 ring-white/10 backdrop-blur">
       <select
         value={project.formatId}
         onChange={(e) => setFormat(e.target.value)}
-        className="max-w-[136px] bg-transparent outline-none"
+        className="max-w-[150px] bg-transparent outline-none"
       >
         {FORMAT_GROUPS.map((group) => (
-          <optgroup key={group} label={group} className="bg-[var(--panel)]">
+          <optgroup key={group} label={group} className="bg-neutral-900">
             {CANVAS_FORMATS.filter((x) => x.group === group).map((x) => (
-              <option key={x.id} value={x.id} className="bg-[var(--panel)]">
+              <option key={x.id} value={x.id} className="bg-neutral-900">
                 {x.name}
               </option>
             ))}
           </optgroup>
         ))}
       </select>
-      <span className="whitespace-nowrap text-[var(--ink-faint)]">
+      <span className="text-neutral-500">
         {f.width} × {f.height}
       </span>
-      <span className="h-3.5 w-px bg-[var(--line)]" />
+      <span className="h-3 w-px bg-white/10" />
       <QualityPicker />
       {hasSafe && (
         <button
           type="button"
           onClick={() => setSafeAreas(!safeAreas)}
           title="Show the margins the platform's own interface covers"
-          className={`rounded px-2 py-0.5 text-[11px] transition ${
-            safeAreas ? "bg-[var(--accent)] text-white" : "bg-[var(--raised)] text-[var(--ink-dim)] hover:text-[var(--ink)]"
+          className={`rounded-full px-2 py-0.5 text-[11px] transition ${
+            safeAreas ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-white/10 text-neutral-400 hover:bg-white/20"
           }`}
         >
           Safe
@@ -229,7 +225,7 @@ function SafeAreaOverlay() {
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
       <div
-        className="absolute border border-dashed border-[var(--accent)]/60"
+        className="absolute border border-dashed border-white/40"
         style={{
           top: `${area.top * 100}%`,
           bottom: `${area.bottom * 100}%`,

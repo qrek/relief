@@ -5,29 +5,32 @@
 }
 
 /*
- * Two greys and one blue. The canvas field is darker than the panels around it,
- * so the frame reads as a sheet lying on a surface, and the only saturated
- * colour anywhere is the one that means "this is selected".
+ * The interface is neutral on purpose: the image is the only thing in the room
+ * allowed to have colour. One accent carries every "this is on" and "this is
+ * selected", so it always means the same thing and changing it is one line.
  */
 :root {
-  --field: #1e1e1e;
-  --panel: #2c2c2c;
-  --raised: #383838;
-  --line: #383838;
-  --line-soft: rgba(255, 255, 255, 0.06);
-  --ink: #ffffff;
-  --ink-dim: #b3b3b3;
-  --ink-faint: #7a7a7a;
-  --accent: #0d99ff;
-  --accent-press: #0c8ce9;
+  /*
+   * Swap these two and the whole interface follows. Alternates that hold up on
+   * this near-black, each with the ink that stays readable on top of it:
+   *   acid lime     #cdf04c on #10130a   (current)
+   *   electric iris #7c5cff on #ffffff
+   *   signal coral  #ff5c35 on #1a0b06
+   *   cold cyan     #22d3ee on #04181c
+   *   hot magenta   #f2409a on #ffffff
+   */
+  --accent: #cdf04c;
+  --accent-ink: #10130a;
+  --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
+  --accent-edge: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 html,
 body {
   height: 100%;
   margin: 0;
-  background: var(--field);
-  color: var(--ink);
+  background: #0a0a0a;
+  color: #e5e5e5;
   font-family: var(--font-sans);
   color-scheme: dark;
 }
@@ -35,54 +38,38 @@ body {
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
-  height: 3px;
-  background: var(--raised);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 9999px;
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
   border-radius: 9999px;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: var(--accent);
   cursor: pointer;
 }
-input[type="range"]:hover::-webkit-slider-thumb {
-  background: var(--accent);
-  border-color: var(--accent);
-}
 input[type="range"]::-moz-range-thumb {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
   border: 0;
   border-radius: 9999px;
-  background: #fff;
+  background: var(--accent);
   cursor: pointer;
 }
 input[type="color"]::-webkit-color-swatch-wrapper {
   padding: 0;
 }
 input[type="color"]::-webkit-color-swatch {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
+  width: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border: 3px solid transparent;
-  background-clip: content-box;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
-  background-clip: content-box;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
 }
