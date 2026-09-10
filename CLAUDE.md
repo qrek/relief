@@ -62,20 +62,30 @@ que le designer a lui-même enregistrées : le projet sérialisé va dans le cha
 IndexedDB de kind `template`, la vignette dans `blob`.
 
 ## Caméra et profondeur de champ
-`lib/postFx.ts` porte la profondeur de champ, en cinq passes qui travaillent toutes en demi-taille
-sauf la dernière : préfiltre, dilatation de la portée du premier plan, collecte du bokeh, filtre
-tente, puis recomposition. La recomposition fait sa propre collecte courte à pleine résolution, si
-bien que les premiers pixels de flou ne passent jamais par le tampon réduit et que ce qui est net
-le reste.
+`lib/postFx.ts` calcule la profondeur de champ sur trois échelles. Ce que chaque pixel voit à
+travers son propre cercle est collecté en demi-résolution puis filtré. Ce qu'un premier plan
+déborde sur tout ce qui est derrière lui est collecté au **quart**, où chaque texel est déjà une
+moyenne de seize. La recomposition fait sa propre collecte courte à pleine résolution pour les
+premiers pixels de flou, bascule sur le tampon demi au-delà, et pose le premier plan par-dessus.
 
-Trois règles apprises à la dure :
+Quatre règles apprises à la dure :
+- `smoothstep(a, b, x)` avec `a > b` est un **comportement indéfini** en GLSL, et les
+  implémentations qui répondent quand même répondent à l'envers. Le test « le cercle de cet
+  échantillon atteint-il ce pixel » doit s'écrire `smoothstep(dist - soft, dist + soft, rayon)`,
+  borne basse d'abord. Écrit dans l'autre sens il donnait exactement l'inverse, et le premier plan
+  ramassait les pixels les moins flous les plus lointains.
 - Le disque du pixel et celui du premier plan sont **deux collectes distinctes**. Les fondre dans
   une seule moyenne laisse l'arrière-plan, qui remplit le disque, écraser le premier plan, et la
-  silhouette qui devrait fondre ressort découpée avec des points le long du bord.
+  silhouette qui devrait fondre ressort découpée.
 - Toute grandeur estimée sur des échantillons tirés au hasard doit être une **moyenne**, jamais un
   maximum : un maximum sur des tirages est un pile ou face qui s'imprime en tramé.
 - La rotation du disque doit venir d'un **bruit sans structure**. Un motif ordonné, y compris
   l'interleaved gradient noise, transforme la variance de la collecte en réseau visible.
+
+La couche de premier plan est stockée **prémultipliée** par sa couverture. C'est ce qui permet de
+la remonter du quart au plein cadre sans tirer du noir depuis les texels vides autour du débordement.
+La remontée passe par un filtre tente lu à la résolution de la cible, sinon les contours de la
+couverture restent en escalier sur la grille du quart.
 
 `SceneRenderer` dans le viewport prend la main sur le rendu avec `useFrame(..., 1)`. Une priorité
 supérieure à zéro coupe le rendu automatique de R3F et garantit que tout le reste, y compris les
@@ -85,13 +95,19 @@ Deux pièges : une passe qui rend à travers une cible ne reçoit **ni tone mapp
 couleur**, il faut donc inclure `tonemapping_fragment` et `colorspace_fragment` à la fin du shader.
 Mais **pas** leurs déclarations `_pars_`, que three injecte déjà dans un ShaderMaterial.
 
+Chaque passe reçoit `uScale`, le nombre de pixels de son tampon par pixel plein cadre : 0.5 en
+demi, 0.25 au quart. Tous les rayons du shader sont en pixels pleine résolution et se convertissent
+par ce facteur. Attention aussi à ne pas nommer un sampler `uNear`, déjà pris par le plan proche
+de la caméra.
+
 `staging.sceneScale` dit combien de millimètres vaut une unité de scène. C'est ce réglage qui rend
 le macro possible : un sujet d'un centimètre par unité photographié de près donne une profondeur de
 champ inférieure au millimètre, exactement comme un vrai objectif. `focusField()` calcule les mêmes
 optiques en TypeScript pour que le panneau affiche des chiffres qui correspondent à l'image.
 
 `DepthOfFieldPass.debug` vaut 1 pour la profondeur linéaire, 2 pour le rayon de flou, 3 pour le
-bokeh brut avant filtre tente, 4 pour l'image filtrée et 5 pour le masque de premier plan.
+bokeh brut, 4 pour le bokeh filtré, 5 pour la couverture du premier plan et 6 pour la couche de
+premier plan elle-même.
 
 ## Export multi-format
 `lib/batch.ts` rend la même scène dans plusieurs formats d'affilée et les empaquette en zip.

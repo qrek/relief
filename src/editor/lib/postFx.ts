@@ -25,8 +25,21 @@ const TAPS = 96;
  */
 const FINE_TAPS = 40;
 
-/** Samples for the separate gather that collects a foreground's spill. */
-const NEAR_TAPS = 40;
+/**
+ * Samples for the separate gather that collects a foreground's spill. It runs
+ * at quarter resolution, where every texel it reads is already an average of
+ * sixteen pixels, so each sample carries far less variance than the same sample
+ * would at half size. That is what settles the mottling along a silhouette.
+ */
+const NEAR_TAPS = 64;
+
+/**
+ * Below this much blur, in pixels, a foreground has almost nothing to spill and
+ * the ordinary gather already reads it correctly: its disc is small enough that
+ * the foreground is not outvoted inside it. Sending it through a quarter-size
+ * buffer would only coarsen an edge that is very nearly right.
+ */
+const NEAR_ENGAGE = 6;
 
 /** Steps to each side in one direction of the near-field dilation. */
 const DILATE_STEPS = 16;
@@ -95,6 +108,8 @@ uniform float uFocal;
 uniform float uMaxBlur;
 uniform float uHighlight;
 uniform float uWorldMm;
+/** Pixels of the buffer this pass writes, per full-resolution pixel. */
+uniform float uScale;
 uniform vec2 uFullResolution;
 
 float linearDepth(vec2 uv) {
@@ -195,25 +210,54 @@ void main() {
  * silhouette, and that prints a row of scallops along every foreground edge.
  * A pass like this samples the same offsets at every pixel, so it cannot.
  */
+/**
+ * Half size down to quarter, keeping the strongest circle of confusion of the
+ * four so a thin foreground edge is not lost on the way.
+ */
+const DOWNSAMPLE = /* glsl */ `
+precision highp float;
+uniform sampler2D uSource;
+uniform vec2 uBufferResolution;
+varying vec2 vUv;
+${LENS}
+
+void main() {
+  vec2 texel = 0.5 / uBufferResolution;
+  vec3 colour = vec3(0.0);
+  float strongest = 0.0;
+
+  for (int y = 0; y < 2; y++) {
+    for (int x = 0; x < 2; x++) {
+      vec2 uv = vUv + (vec2(float(x), float(y)) - 0.5) * texel;
+      vec4 tap = texture2D(uSource, uv);
+      colour += tap.rgb;
+      float coc = unpackCoc(tap.a);
+      if (abs(coc) > abs(strongest)) strongest = coc;
+    }
+  }
+
+  gl_FragColor = vec4(colour * 0.25, packCoc(strongest));
+}
+`;
+
 const DILATE = /* glsl */ `
 precision highp float;
 uniform sampler2D uSource;
-uniform vec2 uHalfResolution;
+uniform vec2 uBufferResolution;
 uniform vec2 uDirection;
 uniform float uSourceIsReach;
 varying vec2 vUv;
 ${LENS}
 
 void main() {
-  float limit = max(1.0, uMaxBlur * 0.5);
-  float stepPx = max(1.0, limit / float(${DILATE_STEPS}));
+  float limit = max(1.0, uMaxBlur * uScale);
+  float stepPx = limit / float(${DILATE_STEPS});
   float reach = 0.0;
 
   for (int i = -${DILATE_STEPS}; i <= ${DILATE_STEPS}; i++) {
-    vec2 uv = clamp(vUv + uDirection * (float(i) * stepPx) / uHalfResolution, 0.0, 1.0);
+    vec2 uv = clamp(vUv + uDirection * (float(i) * stepPx) / uBufferResolution, 0.0, 1.0);
     float a = texture2D(uSource, uv).a;
-    // Radii are halved because everything here runs on the half-size buffer.
-    reach = max(reach, uSourceIsReach > 0.5 ? a : max(0.0, -unpackCoc(a)) * 0.5);
+    reach = max(reach, uSourceIsReach > 0.5 ? a : max(0.0, -unpackCoc(a)) * uScale);
   }
 
   gl_FragColor = vec4(0.0, 0.0, 0.0, reach);
@@ -228,8 +272,7 @@ void main() {
 const BOKEH = /* glsl */ `
 precision highp float;
 uniform sampler2D uSource;
-uniform sampler2D uReach;
-uniform vec2 uHalfResolution;
+uniform vec2 uBufferResolution;
 varying vec2 vUv;
 ${LENS}
 ${IRIS}
@@ -237,92 +280,142 @@ ${IRIS}
 void main() {
   vec4 centre = texture2D(uSource, vUv);
   float centreCoc = unpackCoc(centre.a);
-  // Radii are halved because the gather runs on the half-size buffer.
-  float centreRadius = abs(centreCoc) * 0.5;
+  float centreRadius = abs(centreCoc) * uScale;
 
-  // How far a foreground sitting around this pixel could spill onto it.
-  float nearReach = texture2D(uReach, vUv).a;
+  if (centreRadius < 0.5) {
+    gl_FragColor = vec4(centre.rgb, centre.a);
+    return;
+  }
 
   // Turning the disc by a different angle on every pixel breaks the sample
   // pattern into fine grain instead of a visible moire on specular detail.
-  float baseAngle = discRotation(vUv * uHalfResolution);
+  float baseAngle = discRotation(vUv * uBufferResolution);
 
-  // --- What this pixel sees through its own circle.
-  vec3 sum = centre.rgb;
-  float weight = 1.0;
+  // Samples sit roughly this far apart on the disc. Deciding whether a tap
+  // reaches the pixel any more sharply than that turns the rim of a bokeh into
+  // a chewed edge, because which taps land is dithered per pixel.
+  float soft = clamp(centreRadius * 0.14, 0.7, 3.0);
+  float centreWeight = highlightWeight(centre.rgb);
+  vec3 sum = centre.rgb * centreWeight;
+  float weight = centreWeight;
 
-  if (centreRadius >= 0.5) {
-    // Samples sit roughly this far apart on the disc. Deciding whether a tap
-    // reaches the pixel any more sharply than that turns the rim of a bokeh
-    // into a chewed edge, because which taps land is dithered per pixel.
-    float soft = clamp(centreRadius * 0.14, 0.7, 3.0);
-    float centreWeight = highlightWeight(centre.rgb);
-    sum = centre.rgb * centreWeight;
-    weight = centreWeight;
+  for (int i = 0; i < ${TAPS}; i++) {
+    float t = (float(i) + 0.5) / float(${TAPS});
+    // The square root spreads samples over the area, not over the radius.
+    float r = sqrt(t) * centreRadius;
+    float angle = baseAngle + float(i) * 2.39996323;
+    vec2 offset = irisShape(vec2(cos(angle), sin(angle)), r);
+    float dist = length(offset);
+    vec2 uv = clamp(vUv + offset / uBufferResolution, 0.0, 1.0);
 
-    for (int i = 0; i < ${TAPS}; i++) {
-      float t = (float(i) + 0.5) / float(${TAPS});
-      // The square root spreads samples over the area, not over the radius.
-      float r = sqrt(t) * centreRadius;
-      float angle = baseAngle + float(i) * 2.39996323;
-      vec2 offset = irisShape(vec2(cos(angle), sin(angle)), r);
-      float dist = length(offset);
-      vec2 uv = clamp(vUv + offset / uHalfResolution, 0.0, 1.0);
+    vec4 tap = texture2D(uSource, uv);
+    float tapCoc = unpackCoc(tap.a);
+    float tapRadius = abs(tapCoc) * uScale;
 
-      vec4 tap = texture2D(uSource, uv);
-      float tapCoc = unpackCoc(tap.a);
-      float tapRadius = abs(tapCoc) * 0.5;
+    // Anything at or behind this pixel belongs inside its circle. Anything in
+    // front only counts once its own circle is wide enough to reach across.
+    // Both tests read low edge first: smoothstep is undefined the other way
+    // round, and the implementations that do answer, answer backwards.
+    float behind = smoothstep(centreCoc - soft, centreCoc + soft, tapCoc);
+    float spill = smoothstep(dist - soft, dist + soft, tapRadius);
+    float w = max(behind, spill) * highlightWeight(tap.rgb);
 
-      // Anything at or behind this pixel belongs inside its circle. Anything
-      // in front only counts once its own circle reaches across.
-      float behind = smoothstep(centreCoc - soft, centreCoc + soft, tapCoc);
-      float spill = smoothstep(dist + soft, dist - soft, tapRadius);
-      float w = max(behind, spill) * highlightWeight(tap.rgb);
-
-      sum += tap.rgb * w;
-      weight += w;
-    }
+    sum += tap.rgb * w;
+    weight += w;
   }
 
-  vec3 own = sum / weight;
+  gl_FragColor = vec4(sum / weight, centre.a);
+}
+`;
 
-  // --- What a foreground in front of this pixel spills onto it. It has to be
-  // gathered over its own, wider circle and kept apart from the pass above:
-  // pooling the two lets the background, which fills most of the disc, outvote
-  // the foreground, and a silhouette that should melt stays cut out instead.
-  vec3 nearSum = vec3(0.0);
-  float nearWeight = 0.0;
-  float coverSum = 0.0;
+/**
+ * What a foreground spills over everything behind it, gathered at quarter size
+ * on its own, wider disc. It is kept apart from the pass above for two reasons.
+ * Pooling the two lets the background, which fills most of the disc, outvote
+ * the foreground, so a silhouette that should melt comes out cut. And a
+ * foreground is by definition the most blurred thing in the frame, which is
+ * exactly what can afford to be computed small: at quarter size every texel is
+ * already an average of sixteen, so what was mottle becomes a smooth spill.
+ */
+const NEARFIELD = /* glsl */ `
+precision highp float;
+uniform sampler2D uSource;
+uniform sampler2D uReach;
+uniform vec2 uBufferResolution;
+varying vec2 vUv;
+${LENS}
+${IRIS}
 
-  if (nearReach >= 0.5) {
-    float nearSoft = clamp(nearReach * 0.14, 0.7, 3.0);
+void main() {
+  float reach = texture2D(uReach, vUv).a;
+  float engage = smoothstep(NEAR_ENGAGE * uScale * 0.5, NEAR_ENGAGE * uScale, reach);
 
-    for (int i = 0; i < ${NEAR_TAPS}; i++) {
-      float t = (float(i) + 0.5) / float(${NEAR_TAPS});
-      float r = sqrt(t) * nearReach;
-      // Offset from the other disc's angles so the two do not sample in step.
-      float angle = baseAngle + 1.0 + float(i) * 2.39996323;
-      vec2 offset = irisShape(vec2(cos(angle), sin(angle)), r);
-      float dist = length(offset);
-      vec2 uv = clamp(vUv + offset / uHalfResolution, 0.0, 1.0);
-
-      vec4 tap = texture2D(uSource, uv);
-      float tapCoc = unpackCoc(tap.a);
-      float reach = smoothstep(dist + nearSoft, dist - nearSoft, abs(tapCoc) * 0.5);
-      float w = reach * step(tapCoc, -0.001);
-
-      nearSum += tap.rgb * w;
-      nearWeight += w;
-      // A mean over every tap is smooth where a maximum over dithered taps
-      // would be a coin toss, and a coin toss prints as stipple.
-      coverSum += w;
-    }
+  if (engage <= 0.0) {
+    gl_FragColor = vec4(0.0);
+    return;
   }
 
-  float coverage = clamp(coverSum / float(${NEAR_TAPS}) * 1.3, 0.0, 1.0);
-  vec3 near = nearSum / max(0.0001, nearWeight);
+  float baseAngle = discRotation(vUv * uBufferResolution);
+  float soft = clamp(reach * 0.16, 0.7, 3.0);
 
-  gl_FragColor = vec4(mix(own, near, coverage), coverage);
+  vec3 sum = vec3(0.0);
+  float weight = 0.0;
+
+  for (int i = 0; i < ${NEAR_TAPS}; i++) {
+    float t = (float(i) + 0.5) / float(${NEAR_TAPS});
+    float r = sqrt(t) * reach;
+    float angle = baseAngle + float(i) * 2.39996323;
+    vec2 offset = irisShape(vec2(cos(angle), sin(angle)), r);
+    float dist = length(offset);
+    vec2 uv = clamp(vUv + offset / uBufferResolution, 0.0, 1.0);
+
+    vec4 tap = texture2D(uSource, uv);
+    float tapCoc = unpackCoc(tap.a);
+    // The tap only lands on this pixel if its own circle spans the gap.
+    float covers = smoothstep(dist - soft, dist + soft, abs(tapCoc) * uScale);
+    float w = covers * step(tapCoc, -0.001);
+
+    sum += tap.rgb * w;
+    weight += w;
+  }
+
+  // A mean over every tap is smooth where a maximum over dithered taps would be
+  // a coin toss, and a coin toss prints as stipple.
+  float coverage = clamp(weight / float(${NEAR_TAPS}) * 1.3, 0.0, 1.0) * engage;
+  vec3 colour = sum / max(0.0001, weight);
+
+  // Premultiplied, so that reading this back up to full size interpolates
+  // colour and coverage together instead of dragging black out of the empty
+  // texels that surround the spill.
+  gl_FragColor = vec4(colour * coverage, coverage);
+}
+`;
+
+/**
+ * A plain three by three tent, for smoothing a layer that carries its own
+ * alpha. Run with the resolution of a larger buffer than the one it reads, it
+ * doubles as a smooth way back up: the nine bilinear fetches land between the
+ * source texels, which rounds off the contours a straight enlargement would
+ * leave stepped along the quarter-size grid.
+ */
+const TENT = /* glsl */ `
+precision highp float;
+uniform sampler2D uSource;
+uniform vec2 uBufferResolution;
+varying vec2 vUv;
+
+void main() {
+  vec2 texel = 1.0 / uBufferResolution;
+  vec4 sum = vec4(0.0);
+  float total = 0.0;
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      float w = (x == 0 ? 2.0 : 1.0) * (y == 0 ? 2.0 : 1.0);
+      sum += texture2D(uSource, vUv + vec2(float(x), float(y)) * texel) * w;
+      total += w;
+    }
+  }
+  gl_FragColor = sum / total;
 }
 `;
 
@@ -337,7 +430,7 @@ const POSTBLUR = /* glsl */ `
 precision highp float;
 uniform sampler2D uSource;
 uniform sampler2D uCoc;
-uniform vec2 uHalfResolution;
+uniform vec2 uBufferResolution;
 varying vec2 vUv;
 ${LENS}
 
@@ -345,10 +438,10 @@ void main() {
   // A wide disc is sampled thinly, so it needs the most smoothing; a narrow one
   // would only lose its shape to it. Reading the radius here lets the filter
   // take exactly as much as each part of the frame can afford.
-  float radius = abs(unpackCoc(texture2D(uCoc, vUv).a)) * 0.5;
+  float radius = abs(unpackCoc(texture2D(uCoc, vUv).a)) * uScale;
   float spread = clamp(radius * 0.18, 1.0, 4.0);
 
-  vec2 texel = spread / uHalfResolution;
+  vec2 texel = spread / uBufferResolution;
   vec4 sum = vec4(0.0);
   float total = 0.0;
   for (int y = -1; y <= 1; y++) {
@@ -374,6 +467,7 @@ const COMPOSITE = /* glsl */ `
 precision highp float;
 uniform sampler2D uColor;
 uniform sampler2D uBlur;
+uniform sampler2D uNearField;
 varying vec2 vUv;
 ${LENS}
 ${IRIS}
@@ -410,7 +504,7 @@ vec3 fineGather(float centreCoc) {
     vec3 tap = texture2D(uColor, uv).rgb;
     float tapCoc = signedCoc(linearDepth(uv));
     float behind = smoothstep(centreCoc - soft, centreCoc + soft, tapCoc);
-    float spill = smoothstep(dist + soft, dist - soft, abs(tapCoc));
+    float spill = smoothstep(dist - soft, dist + soft, abs(tapCoc));
     float w = max(behind, spill) * highlightWeight(tap);
     sum += tap * w;
     weight += w;
@@ -423,19 +517,17 @@ void main() {
   vec4 sharp = texture2D(uColor, vUv);
   float coc = signedCoc(linearDepth(vUv));
   float radius = abs(coc);
-  float wideNear = texture2D(uBlur, vUv).a;
 
   // Past this point the wide blur is the whole answer and the two finer tiers
   // would only cost time.
-  float wideMix = clamp(max(smoothstep(FINE_MAX * 0.7, FINE_MAX * 1.6, radius), wideNear), 0.0, 1.0);
+  float wideMix = smoothstep(FINE_MAX * 0.7, FINE_MAX * 1.6, radius);
 
   vec3 result;
   if (wideMix > 0.995) {
     result = texture2D(uBlur, vUv).rgb;
-  } else if (radius > 0.4 || wideNear > 0.002) {
+  } else if (radius > 0.4) {
     // How far the fine tier has taken over is read from this pixel's own circle
-    // and nothing else. Deriving it from dithered samples instead, as the near
-    // mask below is, would print the sample pattern along every silhouette.
+    // and nothing else.
     vec3 fine = fineGather(coc);
     result = mix(sharp.rgb, fine, smoothstep(0.4, 1.6, radius));
     if (wideMix > 0.002) {
@@ -444,6 +536,11 @@ void main() {
   } else {
     result = sharp.rgb;
   }
+
+  // Then the foreground goes over the top of whatever is behind it. It arrives
+  // premultiplied, so this is a plain composite and not a blend.
+  vec4 near = texture2D(uNearField, vUv);
+  result = result * (1.0 - near.a) + near.rgb;
 
   gl_FragColor = vec4(result, sharp.a);
   #include <tonemapping_fragment>
@@ -501,6 +598,7 @@ function lensUniforms(): Uniforms {
     uMaxBlur: { value: 24 },
     uHighlight: { value: 1 },
     uWorldMm: { value: WORLD_TO_MM },
+    uScale: { value: 0.5 },
     uFullResolution: { value: new THREE.Vector2(1, 1) },
   };
 }
@@ -508,6 +606,7 @@ function lensUniforms(): Uniforms {
 const DEFINES = [
   `#define SENSOR ${SENSOR_HEIGHT.toFixed(1)}`,
   `#define FINE_MAX ${FINE_MAX.toFixed(1)}`,
+  `#define NEAR_ENGAGE ${NEAR_ENGAGE.toFixed(1)}`,
 ].join("\n");
 
 function makeMaterial(fragment: string, extra: Uniforms): THREE.ShaderMaterial {
@@ -521,16 +620,20 @@ function makeMaterial(fragment: string, extra: Uniforms): THREE.ShaderMaterial {
 }
 
 /**
- * Depth of field at half size: prefilter, dilate how far the foreground
- * reaches, gather the wide bokeh, tent-filter it, then composite, which does
- * its own short gather at full resolution before falling back on the half-size
- * one. Splitting it this way buys the wide blur its sample density without
- * softening what is in focus.
+ * Depth of field on three scales. What each pixel sees through its own circle
+ * is gathered at half size and tent-filtered. What a foreground spills over
+ * everything behind it is gathered at quarter size, where a texel is already an
+ * average of sixteen and the spill comes out smooth. The composite runs its own
+ * short gather at full resolution for the first pixels of defocus, drops to the
+ * half-size buffer past that, and lays the foreground over the top. Spending
+ * each layer at the size it can afford is what buys the blur its sample density
+ * without softening anything in focus.
  */
 export class DepthOfFieldPass {
   /**
    * 0 renders normally. 1 shows linear depth, 2 the blur radius, 3 the gathered
-   * bokeh before the tent filter, 4 after it, and 5 the near-field mask.
+   * bokeh before the tent filter, 4 after it, 5 the foreground's coverage and
+   * 6 the foreground layer itself.
    */
   static debug = 0;
 
@@ -538,8 +641,11 @@ export class DepthOfFieldPass {
   private readonly camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   private readonly quad: THREE.Mesh;
   private readonly prefilter: THREE.ShaderMaterial;
+  private readonly downsample: THREE.ShaderMaterial;
   private readonly dilate: THREE.ShaderMaterial;
   private readonly bokeh: THREE.ShaderMaterial;
+  private readonly nearfield: THREE.ShaderMaterial;
+  private readonly tent: THREE.ShaderMaterial;
   private readonly postblur: THREE.ShaderMaterial;
   private readonly composite: THREE.ShaderMaterial;
   private readonly debugMaterial: THREE.ShaderMaterial;
@@ -549,32 +655,50 @@ export class DepthOfFieldPass {
   private halfA: THREE.WebGLRenderTarget | null = null;
   private halfB: THREE.WebGLRenderTarget | null = null;
   private halfC: THREE.WebGLRenderTarget | null = null;
+  private quarterA: THREE.WebGLRenderTarget | null = null;
+  private quarterB: THREE.WebGLRenderTarget | null = null;
+  private quarterC: THREE.WebGLRenderTarget | null = null;
   private width = 0;
   private height = 0;
 
   constructor() {
     this.prefilter = makeMaterial(PREFILTER, { uColor: { value: null } });
+    this.downsample = makeMaterial(DOWNSAMPLE, {
+      uSource: { value: null },
+      uBufferResolution: { value: new THREE.Vector2(1, 1) },
+    });
     this.dilate = makeMaterial(DILATE, {
       uSource: { value: null },
-      uHalfResolution: { value: new THREE.Vector2(1, 1) },
+      uBufferResolution: { value: new THREE.Vector2(1, 1) },
       uDirection: { value: new THREE.Vector2(1, 0) },
       uSourceIsReach: { value: 0 },
     });
     this.bokeh = makeMaterial(BOKEH, {
       uSource: { value: null },
-      uReach: { value: null },
-      uHalfResolution: { value: new THREE.Vector2(1, 1) },
+      uBufferResolution: { value: new THREE.Vector2(1, 1) },
       uBlades: { value: 0 },
       uBladeAngle: { value: 0 },
+    });
+    this.nearfield = makeMaterial(NEARFIELD, {
+      uSource: { value: null },
+      uReach: { value: null },
+      uBufferResolution: { value: new THREE.Vector2(1, 1) },
+      uBlades: { value: 0 },
+      uBladeAngle: { value: 0 },
+    });
+    this.tent = makeMaterial(TENT, {
+      uSource: { value: null },
+      uBufferResolution: { value: new THREE.Vector2(1, 1) },
     });
     this.postblur = makeMaterial(POSTBLUR, {
       uSource: { value: null },
       uCoc: { value: null },
-      uHalfResolution: { value: new THREE.Vector2(1, 1) },
+      uBufferResolution: { value: new THREE.Vector2(1, 1) },
     });
     this.composite = makeMaterial(COMPOSITE, {
       uColor: { value: null },
       uBlur: { value: null },
+      uNearField: { value: null },
       uBlades: { value: 0 },
       uBladeAngle: { value: 0 },
     });
@@ -592,6 +716,9 @@ export class DepthOfFieldPass {
     this.halfA?.dispose();
     this.halfB?.dispose();
     this.halfC?.dispose();
+    this.quarterA?.dispose();
+    this.quarterB?.dispose();
+    this.quarterC?.dispose();
     this.width = width;
     this.height = height;
 
@@ -613,6 +740,12 @@ export class DepthOfFieldPass {
     this.halfA = new THREE.WebGLRenderTarget(halfWidth, halfHeight, { ...options, depthBuffer: false });
     this.halfB = new THREE.WebGLRenderTarget(halfWidth, halfHeight, { ...options, depthBuffer: false });
     this.halfC = new THREE.WebGLRenderTarget(halfWidth, halfHeight, { ...options, depthBuffer: false });
+
+    const quarterWidth = Math.max(2, Math.floor(width / 4));
+    const quarterHeight = Math.max(2, Math.floor(height / 4));
+    this.quarterA = new THREE.WebGLRenderTarget(quarterWidth, quarterHeight, { ...options, depthBuffer: false });
+    this.quarterB = new THREE.WebGLRenderTarget(quarterWidth, quarterHeight, { ...options, depthBuffer: false });
+    this.quarterC = new THREE.WebGLRenderTarget(quarterWidth, quarterHeight, { ...options, depthBuffer: false });
   }
 
   private setLens(material: THREE.ShaderMaterial, camera: THREE.PerspectiveCamera, settings: DepthOfFieldSettings) {
@@ -647,15 +780,26 @@ export class DepthOfFieldPass {
     const halfA = this.halfA!;
     const halfB = this.halfB!;
     const halfC = this.halfC!;
+    const quarterA = this.quarterA!;
+    const quarterB = this.quarterB!;
+    const quarterC = this.quarterC!;
     const previousTarget = renderer.getRenderTarget();
 
     renderer.setRenderTarget(sceneTarget);
     renderer.clear();
     renderer.render(scene, camera);
 
-    for (const material of [this.prefilter, this.dilate, this.bokeh, this.postblur, this.composite, this.debugMaterial]) {
-      this.setLens(material, camera, settings);
-    }
+    const lensPasses = [
+      this.prefilter,
+      this.downsample,
+      this.dilate,
+      this.bokeh,
+      this.nearfield,
+      this.postblur,
+      this.composite,
+      this.debugMaterial,
+    ];
+    for (const material of lensPasses) this.setLens(material, camera, settings);
 
     if (DepthOfFieldPass.debug > 0 && DepthOfFieldPass.debug < 3) {
       this.debugMaterial.uniforms.uMode.value = DepthOfFieldPass.debug;
@@ -663,39 +807,76 @@ export class DepthOfFieldPass {
       return;
     }
 
+    const setSize = (material: THREE.ShaderMaterial, target: THREE.WebGLRenderTarget) => {
+      (material.uniforms.uBufferResolution.value as THREE.Vector2).set(target.width, target.height);
+    };
+    const setIris = (material: THREE.ShaderMaterial) => {
+      material.uniforms.uBlades.value = settings.blades;
+      material.uniforms.uBladeAngle.value = settings.bladeAngle;
+    };
+
+    // --- Full frame down to half size, carrying the circle of confusion along.
     this.prefilter.uniforms.uColor.value = sceneTarget.texture;
     this.draw(renderer, this.prefilter, halfA);
 
-    // Dilate the foreground's reach across the frame, one direction at a time.
-    const dilateResolution = this.dilate.uniforms.uHalfResolution.value as THREE.Vector2;
-    dilateResolution.set(halfA.width, halfA.height);
-    const direction = this.dilate.uniforms.uDirection.value as THREE.Vector2;
-
-    this.dilate.uniforms.uSource.value = halfA.texture;
-    this.dilate.uniforms.uSourceIsReach.value = 0;
-    direction.set(1, 0);
-    this.draw(renderer, this.dilate, halfB);
-
-    this.dilate.uniforms.uSource.value = halfB.texture;
-    this.dilate.uniforms.uSourceIsReach.value = 1;
-    direction.set(0, 1);
-    this.draw(renderer, this.dilate, halfC);
-
+    // --- What this pixel sees through its own circle, at half size.
     this.bokeh.uniforms.uSource.value = halfA.texture;
-    this.bokeh.uniforms.uReach.value = halfC.texture;
-    (this.bokeh.uniforms.uHalfResolution.value as THREE.Vector2).set(halfA.width, halfA.height);
-    this.bokeh.uniforms.uBlades.value = settings.blades;
-    this.bokeh.uniforms.uBladeAngle.value = settings.bladeAngle;
+    this.bokeh.uniforms.uScale.value = 0.5;
+    setSize(this.bokeh, halfA);
+    setIris(this.bokeh);
     this.draw(renderer, this.bokeh, halfB);
 
     this.postblur.uniforms.uSource.value = halfB.texture;
     this.postblur.uniforms.uCoc.value = halfA.texture;
-    (this.postblur.uniforms.uHalfResolution.value as THREE.Vector2).set(halfB.width, halfB.height);
+    this.postblur.uniforms.uScale.value = 0.5;
+    setSize(this.postblur, halfB);
     this.draw(renderer, this.postblur, halfC);
 
+
+    // --- The foreground layer, at quarter size.
+    this.downsample.uniforms.uSource.value = halfA.texture;
+    this.downsample.uniforms.uScale.value = 0.25;
+    setSize(this.downsample, quarterA);
+    this.draw(renderer, this.downsample, quarterA);
+
+    // Dilate how far a foreground reaches, one direction at a time.
+    this.dilate.uniforms.uScale.value = 0.25;
+    setSize(this.dilate, quarterA);
+    const direction = this.dilate.uniforms.uDirection.value as THREE.Vector2;
+
+    this.dilate.uniforms.uSource.value = quarterA.texture;
+    this.dilate.uniforms.uSourceIsReach.value = 0;
+    direction.set(1, 0);
+    this.draw(renderer, this.dilate, quarterB);
+
+    this.dilate.uniforms.uSource.value = quarterB.texture;
+    this.dilate.uniforms.uSourceIsReach.value = 1;
+    direction.set(0, 1);
+    this.draw(renderer, this.dilate, quarterC);
+
+    this.nearfield.uniforms.uSource.value = quarterA.texture;
+    this.nearfield.uniforms.uReach.value = quarterC.texture;
+    this.nearfield.uniforms.uScale.value = 0.25;
+    setSize(this.nearfield, quarterA);
+    setIris(this.nearfield);
+    this.draw(renderer, this.nearfield, quarterB);
+
+    setSize(this.tent, quarterB);
+    this.tent.uniforms.uSource.value = quarterB.texture;
+    this.draw(renderer, this.tent, quarterC);
+
     const inspecting = DepthOfFieldPass.debug;
+    if (inspecting < 3) {
+      // Back up to half size through the same filter. halfA has given up its
+      // circle of confusion to the passes above and is free to take this.
+      setSize(this.tent, halfA);
+      this.tent.uniforms.uSource.value = quarterC.texture;
+      this.draw(renderer, this.tent, halfA);
+    }
+
     if (inspecting >= 3) {
-      this.inspect.uniforms.uSource.value = inspecting === 3 ? halfB.texture : halfC.texture;
+      this.inspect.uniforms.uSource.value =
+        inspecting === 3 ? halfB.texture : inspecting === 4 ? halfC.texture : quarterC.texture;
       this.inspect.uniforms.uAlphaOnly.value = inspecting === 5 ? 1 : 0;
       this.draw(renderer, this.inspect, previousTarget);
       return;
@@ -703,8 +884,8 @@ export class DepthOfFieldPass {
 
     this.composite.uniforms.uColor.value = sceneTarget.texture;
     this.composite.uniforms.uBlur.value = halfC.texture;
-    this.composite.uniforms.uBlades.value = settings.blades;
-    this.composite.uniforms.uBladeAngle.value = settings.bladeAngle;
+    this.composite.uniforms.uNearField.value = halfA.texture;
+    setIris(this.composite);
     this.draw(renderer, this.composite, previousTarget);
   }
 
@@ -713,10 +894,16 @@ export class DepthOfFieldPass {
     this.halfA?.dispose();
     this.halfB?.dispose();
     this.halfC?.dispose();
+    this.quarterA?.dispose();
+    this.quarterB?.dispose();
+    this.quarterC?.dispose();
     this.quad.geometry.dispose();
     this.prefilter.dispose();
+    this.downsample.dispose();
     this.dilate.dispose();
     this.bokeh.dispose();
+    this.nearfield.dispose();
+    this.tent.dispose();
     this.postblur.dispose();
     this.composite.dispose();
     this.debugMaterial.dispose();

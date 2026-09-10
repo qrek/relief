@@ -509,17 +509,25 @@ La focale remplace le champ de vision : on règle en millimètres sur un capteur
 une indication de ce que donne un grand angle ou un téléobjectif.
 
 ### Profondeur de champ
-Cinq passes de post-traitement. La scène part dans une cible en demi-flottant, ce qui garde vivantes
-les hautes lumières au-dessus du blanc. Un préfiltre réduit l'image de moitié en conservant le
-cercle de confusion le plus fort des quatre pixels source. Une dilatation séparable établit jusqu'où
-un premier plan peut déborder. La collecte du bokeh échantillonne un disque à angle d'or tourné
-d'un angle différent sur chaque pixel, avec les lames du diaphragme. Un filtre tente, dont la
-largeur suit le rayon local, efface la variance restante. La recomposition mélange trois niveaux :
-l'image d'origine là où c'est net, sa propre collecte courte à pleine résolution juste après, et
-seulement ensuite le tampon réduit.
+Le flou est calculé sur trois échelles, chacune à la taille qu'elle peut se permettre.
 
-Le premier plan est collecté séparément, sur son propre disque, et recomposé par couverture. C'est
-la seule façon d'obtenir une silhouette qui fond au lieu d'une découpe.
+La scène part dans une cible en demi-flottant, ce qui garde vivantes les hautes lumières au-dessus
+du blanc. Un préfiltre réduit l'image de moitié en conservant le cercle de confusion le plus fort
+des quatre pixels source. En demi-résolution, une collecte de quatre-vingt-seize échantillons sur
+un disque à angle d'or, tourné d'un angle différent sur chaque pixel et découpé par les lames du
+diaphragme, donne ce que chaque pixel voit à travers son propre cercle ; un filtre tente dont la
+largeur suit le rayon local efface la variance restante.
+
+Le premier plan est traité à part, au quart de résolution. Une dilatation séparable établit jusqu'où
+il peut déborder, puis soixante-quatre échantillons ramassent sa couleur et sa couverture. À cette
+taille chaque texel lu est déjà une moyenne de seize pixels, ce qui est exactement ce qu'il faut
+pour une couche qui est par définition la plus floue de l'image. La couche est gardée prémultipliée
+par sa couverture et remontée par un filtre tente, pour que ni le noir des texels vides ni la grille
+du quart ne se voient.
+
+La recomposition mélange trois niveaux : l'image d'origine là où c'est net, sa propre collecte
+courte à pleine résolution juste après, le tampon demi au-delà, et pose enfin le premier plan
+par-dessus le tout. Rien de net n'est jamais construit à partir d'une image agrandie.
 
 ### Mise au point réelle et macro
 - **Pull focus** : un clic dans le cadre met au point sur le point exact sous le curseur, à la
@@ -534,7 +542,7 @@ la seule façon d'obtenir une silhouette qui fond au lieu d'une découpe.
   d'intensité des hautes lumières dans le bokeh.
 
 ### Limites connues
-Il reste un léger moutonnement dans la bande où le premier plan commence à déborder, là où la
-couverture est partielle et où la couche proche est estimée sur peu d'échantillons. Il faudrait
-collecter ce plan à un quart de résolution pour lui donner quatre fois plus de surface par
-échantillon. Ce n'est plus visible en usage normal, seulement à fort agrandissement.
+Un premier plan flou de moins de six pixels ne passe pas par la couche au quart : sa silhouette
+reste celle que donne la collecte ordinaire, un peu plus franche qu'elle ne devrait. À cette
+échelle de flou l'écart n'est pas lisible, et l'envoyer dans un tampon quatre fois plus petit
+coûterait plus qu'il ne rapporterait.
