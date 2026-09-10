@@ -62,9 +62,20 @@ que le designer a lui-même enregistrées : le projet sérialisé va dans le cha
 IndexedDB de kind `template`, la vignette dans `blob`.
 
 ## Caméra et profondeur de champ
-`lib/postFx.ts` porte la passe de profondeur de champ. La scène est rendue dans une cible avec
-texture de profondeur, puis une passe plein écran calcule le cercle de confusion à partir de la
-focale, de l'ouverture et de la distance de mise au point, et échantillonne un disque à angle d'or.
+`lib/postFx.ts` porte la profondeur de champ, en cinq passes qui travaillent toutes en demi-taille
+sauf la dernière : préfiltre, dilatation de la portée du premier plan, collecte du bokeh, filtre
+tente, puis recomposition. La recomposition fait sa propre collecte courte à pleine résolution, si
+bien que les premiers pixels de flou ne passent jamais par le tampon réduit et que ce qui est net
+le reste.
+
+Trois règles apprises à la dure :
+- Le disque du pixel et celui du premier plan sont **deux collectes distinctes**. Les fondre dans
+  une seule moyenne laisse l'arrière-plan, qui remplit le disque, écraser le premier plan, et la
+  silhouette qui devrait fondre ressort découpée avec des points le long du bord.
+- Toute grandeur estimée sur des échantillons tirés au hasard doit être une **moyenne**, jamais un
+  maximum : un maximum sur des tirages est un pile ou face qui s'imprime en tramé.
+- La rotation du disque doit venir d'un **bruit sans structure**. Un motif ordonné, y compris
+  l'interleaved gradient noise, transforme la variance de la collecte en réseau visible.
 
 `SceneRenderer` dans le viewport prend la main sur le rendu avec `useFrame(..., 1)`. Une priorité
 supérieure à zéro coupe le rendu automatique de R3F et garantit que tout le reste, y compris les
@@ -74,7 +85,13 @@ Deux pièges : une passe qui rend à travers une cible ne reçoit **ni tone mapp
 couleur**, il faut donc inclure `tonemapping_fragment` et `colorspace_fragment` à la fin du shader.
 Mais **pas** leurs déclarations `_pars_`, que three injecte déjà dans un ShaderMaterial.
 
-`DepthOfFieldPass.debug` vaut 1 pour visualiser la profondeur linéaire et 2 pour le rayon de flou.
+`staging.sceneScale` dit combien de millimètres vaut une unité de scène. C'est ce réglage qui rend
+le macro possible : un sujet d'un centimètre par unité photographié de près donne une profondeur de
+champ inférieure au millimètre, exactement comme un vrai objectif. `focusField()` calcule les mêmes
+optiques en TypeScript pour que le panneau affiche des chiffres qui correspondent à l'image.
+
+`DepthOfFieldPass.debug` vaut 1 pour la profondeur linéaire, 2 pour le rayon de flou, 3 pour le
+bokeh brut avant filtre tente, 4 pour l'image filtrée et 5 pour le masque de premier plan.
 
 ## Export multi-format
 `lib/batch.ts` rend la même scène dans plusieurs formats d'affilée et les empaquette en zip.

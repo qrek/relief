@@ -509,14 +509,32 @@ La focale remplace le champ de vision : on règle en millimètres sur un capteur
 une indication de ce que donne un grand angle ou un téléobjectif.
 
 ### Profondeur de champ
-Une passe de post-traitement sur toute la scène. Le rayon de flou vient du cercle de confusion,
-donc l'ouverture et la focale se comportent comme sur un appareil. Réglages : mise au point avec
-un bouton qui vise l'objet sélectionné, ouverture de f/0.8 à f/22, lames du diaphragme pour un
-bokeh polygonal, et intensité des hautes lumières.
+Cinq passes de post-traitement. La scène part dans une cible en demi-flottant, ce qui garde vivantes
+les hautes lumières au-dessus du blanc. Un préfiltre réduit l'image de moitié en conservant le
+cercle de confusion le plus fort des quatre pixels source. Une dilatation séparable établit jusqu'où
+un premier plan peut déborder. La collecte du bokeh échantillonne un disque à angle d'or tourné
+d'un angle différent sur chaque pixel, avec les lames du diaphragme. Un filtre tente, dont la
+largeur suit le rayon local, efface la variance restante. La recomposition mélange trois niveaux :
+l'image d'origine là où c'est net, sa propre collecte courte à pleine résolution juste après, et
+seulement ensuite le tampon réduit.
 
-**État honnête : la qualité n'est pas encore au niveau demandé.** La profondeur et le rayon de
-flou sont corrects, vérifiés par visualisation. Le rendu final reste cotonneux parce que
-soixante-quatre échantillons répartis sur un disque de trente pixels sont trop clairsemés pour
-remplir la surface du disque. La correction connue est un passage en plusieurs résolutions :
-flou à demi-résolution où la densité d'échantillons est quadruplée, séparation des champs proche
-et lointain, puis recomposition avec l'image nette. C'est le prochain chantier.
+Le premier plan est collecté séparément, sur son propre disque, et recomposé par couverture. C'est
+la seule façon d'obtenir une silhouette qui fond au lieu d'une découpe.
+
+### Mise au point réelle et macro
+- **Pull focus** : un clic dans le cadre met au point sur le point exact sous le curseur, à la
+  distance réellement touchée, comme un assistant caméra qui repère un comédien.
+- **Subject size** : combien de millimètres vaut une unité de scène. C'est ce qui distingue une
+  nature morte d'un macro. Un sujet à un centimètre par unité, photographié de près, donne une
+  profondeur de champ inférieure au millimètre.
+- **Lecture optique** : le panneau affiche les bornes de netteté, l'épaisseur du champ, le rapport
+  de grandissement avec la mention macro, et l'hyperfocale. Il prévient quand la mise au point
+  demandée est plus proche que la focale, ce qu'aucun objectif ne sait faire.
+- Ouverture de f/0.8 à f/22, lames de diaphragme de 5 à 9, angle du diaphragme, et un réglage
+  d'intensité des hautes lumières dans le bokeh.
+
+### Limites connues
+Il reste un léger moutonnement dans la bande où le premier plan commence à déborder, là où la
+couverture est partielle et où la couche proche est estimée sur peu d'échantillons. Il faudrait
+collecter ce plan à un quart de résolution pour lui donner quatre fois plus de surface par
+échantillon. Ce n'est plus visible en usage normal, seulement à fort agrandissement.

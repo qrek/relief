@@ -37,7 +37,8 @@ export const DEFAULT_STAGING: Staging = {
   maxBlur: 18,
   blades: 0,
   bladeAngle: 0,
-  highlight: 0,
+  bokehHighlight: 1,
+  sceneScale: 50,
 };
 
 export const DEFAULT_CAMERA = {

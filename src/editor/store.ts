@@ -38,7 +38,7 @@ const HISTORY_LIMIT = 60;
 const COALESCE_MS = 400;
 // Bump whenever an object or project field is added, so normalizeProject runs on
 // projects already saved in the browser.
-const PERSIST_VERSION = 6;
+const PERSIST_VERSION = 8;
 
 export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto

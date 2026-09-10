@@ -88,18 +88,42 @@ export function Viewport() {
         }}
       >
         <SafeAreaOverlay />
+        <FocusPickerHint />
         <Canvas
           shadows
           dpr={[1, 2]}
           // The drawing buffer is kept so video export can read frames back after awaiting the encoder.
           gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
           camera={{ fov: project.staging.fov, position: project.camera.position, near: 0.1, far: 200 }}
-          onPointerMissed={() => useEditor.getState().select(null)}
+          onPointerMissed={() => {
+            if (useRuntime.getState().focusPicking) {
+              useRuntime.getState().setFocusPicking(false);
+              return;
+            }
+            useEditor.getState().select(null);
+          }}
         >
           <SceneContent />
         </Canvas>
       </div>
       <FormatBadge />
+    </div>
+  );
+}
+
+/** Tells the user the next click sets focus, and gives them a way out. */
+function FocusPickerHint() {
+  const picking = useRuntime((r) => r.focusPicking);
+  const setFocusPicking = useRuntime((r) => r.setFocusPicking);
+  if (!picking) return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20 cursor-crosshair">
+      <div className="pointer-events-auto absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-[11px] font-medium text-neutral-900 shadow">
+        Click a point to pull focus there
+        <button className="ml-2 text-neutral-500 hover:text-neutral-900" onClick={() => setFocusPicking(false)}>
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
@@ -347,6 +371,15 @@ function ObjectNode({ obj }: { obj: SceneObject }) {
   const onClick = (e: ThreeEvent<MouseEvent>) => {
     if (obj.locked) return;
     e.stopPropagation();
+
+    // Pulling focus reads the distance to the exact point under the cursor, the
+    // way a focus puller marks an actor rather than the middle of their body.
+    if (useRuntime.getState().focusPicking) {
+      useEditor.getState().setStaging({ focusDistance: e.distance }, false);
+      useRuntime.getState().setFocusPicking(false);
+      return;
+    }
+
     // Shift-click drills into the individual mesh so it can take its own material.
     const partId = e.shiftKey ? ((e.object.userData?.partId as string | undefined) ?? "body") : null;
     select(obj.id, partId);
@@ -420,6 +453,8 @@ function SceneRenderer({ staging }: { staging: Staging }) {
       maxBlur: staging.maxBlur,
       blades: staging.blades,
       bladeAngle: (staging.bladeAngle * Math.PI) / 180,
+      highlight: staging.bokehHighlight,
+      worldMm: staging.sceneScale,
     });
   }, 1);
 

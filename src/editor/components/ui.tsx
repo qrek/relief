@@ -39,6 +39,7 @@ export function Slider({
   step = 0.01,
   onChange,
   format,
+  logarithmic = false,
 }: {
   label: string;
   value: number;
@@ -47,17 +48,25 @@ export function Slider({
   step?: number;
   onChange: (v: number) => void;
   format?: (v: number) => string;
+  /** Spreads the travel by ratio rather than by amount, for ranges like a focus
+   *  distance where the useful detail sits at the near end. Needs min > 0. */
+  logarithmic?: boolean;
 }) {
+  const usesLog = logarithmic && min > 0 && max > min;
+  const toTrack = (v: number) =>
+    usesLog ? Math.log(Math.max(min, Math.min(max, v)) / min) / Math.log(max / min) : v;
+  const fromTrack = (t: number) => (usesLog ? min * Math.pow(max / min, t) : t);
+
   return (
     <Row label={label}>
       <div className="flex items-center gap-2">
         <input
           type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
+          min={usesLog ? 0 : min}
+          max={usesLog ? 1 : max}
+          step={usesLog ? 0.001 : step}
+          value={toTrack(value)}
+          onChange={(e) => onChange(fromTrack(parseFloat(e.target.value)))}
           className="h-1 flex-1 cursor-pointer accent-white"
         />
         <NumberField value={value} step={step} onChange={onChange} format={format} />

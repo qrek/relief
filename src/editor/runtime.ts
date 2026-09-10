@@ -19,6 +19,9 @@ type RuntimeState = {
   setError: (id: string, message: string | null) => void;
   resetCameraSignal: number;
   requestCameraReset: () => void;
+  /** While armed, the next click in the viewport pulls focus to what it hits. */
+  focusPicking: boolean;
+  setFocusPicking: (picking: boolean) => void;
 };
 
 const sameParts = (a: PartInfo[] | undefined, b: PartInfo[]) =>
@@ -56,6 +59,8 @@ export const useRuntime = create<RuntimeState>((set, get) => ({
     }),
   resetCameraSignal: 0,
   requestCameraReset: () => set((s) => ({ resetCameraSignal: s.resetCameraSignal + 1 })),
+  focusPicking: false,
+  setFocusPicking: (focusPicking) => set({ focusPicking }),
 }));
 
 export const usePartsOf = (id: string | null) =>

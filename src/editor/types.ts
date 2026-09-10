@@ -227,8 +227,10 @@ export type Staging = {
   blades: number;
   /** Rotation of the iris polygon, in degrees. */
   bladeAngle: number;
-  /** How strongly highlights bloom into bokeh discs. */
-  highlight: number;
+  /** How strongly highlights gather into bokeh discs. */
+  bokehHighlight: number;
+  /** Millimetres one world unit stands for. Smaller turns the lens macro. */
+  sceneScale: number;
 };
 
 export type CanvasFormat = {
