@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { sceneClock } from "./clock";
+import { sampleParams } from "./keyframes";
 import { GLSL_PREAMBLE, effectById, type EffectDef } from "../presets/effects";
 import { TAU } from "./clock";
 import type { EffectInstance } from "../types";
@@ -360,11 +362,14 @@ export class EffectChain {
     for (const instance of active) {
       const def = effectById(instance.effectId)!;
 
+      // A keyed effect reads its numbers off its keys at this moment of the clip.
+      const params = instance.keys?.length ? sampleParams(instance.keys, sceneClock.clipTime, instance.params) : instance.params;
+
       // Bloom is not one pass but a pyramid, so it takes the slot itself.
       if (def.id === "bloom") {
         this.bloom ??= new BloomStage();
         const target = this.targets[slot];
-        this.bloom.render(renderer, input, instance.params, w, h, target, frameScale);
+        this.bloom.render(renderer, input, params, w, h, target, frameScale);
         input = target.texture;
         slot = 1 - slot;
         continue;
@@ -378,10 +383,10 @@ export class EffectChain {
       // Time reaches the shaders as an angle in radians, one full turn per cycle.
       // Every animated effect is written to be periodic in it, so a clip lasting
       // 1/speed seconds loops without a seam.
-      const speed = instance.params.speed ?? 1;
+      const speed = params.speed ?? 1;
       mat.uniforms.uTime.value = TAU * speed * time;
       for (const p of def.params) {
-        mat.uniforms[`p_${p.key}`].value = instance.params[p.key] ?? p.default;
+        mat.uniforms[`p_${p.key}`].value = params[p.key] ?? p.default;
       }
       for (const c of def.colors) {
         (mat.uniforms[`c_${c.key}`].value as THREE.Color).set(instance.colors[c.key] ?? c.default);

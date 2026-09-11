@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import * as THREE from "three";
 import { useEditor, useSelectedObject, type PanelId } from "../store";
 import { useRuntime } from "../runtime";
+import { sceneClock } from "../lib/clock";
 import { Viewport } from "./Viewport";
 import { TopBar } from "./panels/TopBar";
 import { ToolRail } from "./panels/ToolRail";
@@ -206,6 +207,14 @@ function useKeyboardShortcuts() {
           break;
         case "0":
           s.setViewMode(s.viewMode === "camera" ? "free" : "camera");
+          break;
+        case " ":
+          e.preventDefault();
+          sceneClock.toggle();
+          break;
+        case "k":
+        case "K":
+          if (s.selectedId) s.addObjectKey(s.selectedId, sceneClock.clipTime);
           break;
         case "1":
           s.setActivePanel("object");

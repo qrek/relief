@@ -12,6 +12,9 @@ import { MediaLibrary } from "./MediaLibrary";
 import type { CoverObject, LabelObject, ModelObject, Motion, ShapeObject, TextObject } from "../../types";
 import { Button, ColorField, IconButton, Row, Section, SelectField, Slider, TextField, Toggle, Vec3Field } from "../ui";
 import { Copy, Trash2 } from "lucide-react";
+import { KeyframesSection } from "./Keyframes";
+import { sampleTransform } from "../../lib/keyframes";
+import { useClockTick } from "../useClockTick";
 
 export function ObjectPanel() {
   const obj = useSelectedObject();
@@ -21,6 +24,11 @@ export function ObjectPanel() {
   const duplicateObject = useEditor((s) => s.duplicateObject);
   const toggleLock = useEditor((s) => s.toggleLock);
   const error = useRuntime((s) => (obj ? s.errors[obj.id] : undefined));
+  const addObjectKey = useEditor((s) => s.addObjectKey);
+  const removeObjectKey = useEditor((s) => s.removeObjectKey);
+  const setObjectKeysEase = useEditor((s) => s.setObjectKeysEase);
+  const closeObjectLoop = useEditor((s) => s.closeObjectLoop);
+  const tick = useClockTick();
 
   if (!obj) {
     return (
@@ -33,7 +41,8 @@ export function ObjectPanel() {
     );
   }
 
-  const t = obj.transform;
+  // A keyed object shows where its keys put it right now, not its stored base.
+  const t = obj.keys.length ? sampleTransform(obj.keys, tick.time, obj.transform) : obj.transform;
   return (
     <>
       {error && (
@@ -73,6 +82,15 @@ export function ObjectPanel() {
           <Slider label="Smoothness" value={obj.curveSegments} min={1} max={32} step={1} onChange={(curveSegments) => updateObject(obj.id, { curveSegments })} />
         </Section>
       )}
+
+      <KeyframesSection
+        keys={obj.keys}
+        what="move it with the gizmo or the fields"
+        onAdd={(at) => addObjectKey(obj.id, at)}
+        onRemove={(keyId) => removeObjectKey(obj.id, keyId)}
+        onEase={(ease) => setObjectKeysEase(obj.id, ease)}
+        onCloseLoop={() => closeObjectLoop(obj.id)}
+      />
 
       <MotionSection objectId={obj.id} motion={obj.motion} />
 

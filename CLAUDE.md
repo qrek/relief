@@ -114,6 +114,26 @@ périodique en `uTime` de période `TAU`. Pour le bruit, on parcourt un cercle
 
 Le mouvement s'applique sur un groupe interne, pas sur le groupe transformé par le gizmo.
 
+## Keyframes
+Le projet porte un **clip** (`project.clip.duration`, 4 s par défaut) qui boucle ; l'horloge
+expose `clipTime` (le temps enroulé sur cette durée), `playing`, `seek`, `pause`. Un objet a des
+`keys` de transform, un effet des `keys` de paramètres numériques ; `lib/keyframes.ts` les
+échantillonne (interpolation par composante, angles par le plus court chemin, quatre eases, la
+première clé tient avant elle et la dernière après). Le mouvement en boucle (Motion) joue
+par-dessus, sur son groupe interne.
+
+La règle d'usage est celle d'un auto-key : **dès qu'un objet a une clé, il est là où ses clés le
+disent**, et le déplacer (gizmo ou champs) écrit la clé au temps courant. Même chose pour un
+curseur d'effet keyé. Sans clé, rien ne change. Le gizmo lève `runtime.dragging` pendant la prise,
+pour que l'échantillonnage ne se batte pas avec la main. « Close loop » copie la première clé à la
+fin du clip. Espace joue et met en pause, K ajoute une clé sur la sélection.
+
+Les panneaux affichent la valeur échantillonnée au temps courant (transform, paramètres), pas la
+valeur de base : `useClockTick` échantillonne l'horloge quelques fois par seconde sans en faire
+un état React. Le transport (lecture, curseur, durée) est en bas à gauche du viewport, avec les
+clés de la sélection marquées sous le curseur. Un clip keyé est une période de plus pour la
+suggestion de durée de boucle vidéo.
+
 ## Templates et scènes enregistrées
 Le bouton Scenes ouvre deux listes. En haut, les **templates** de `presets/templates.ts` : des
 compositions finies (sujet, type, lumière, objectif, look) rendues par l'app elle-même, vignette

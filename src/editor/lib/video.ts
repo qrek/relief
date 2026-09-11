@@ -159,6 +159,11 @@ function scenePeriods(project: Project): number[] {
       if (effect.enabled && typeof speed === "number" && speed > 0.001) periods.push(1 / speed);
     }
   }
+  // Keyframes live in the clip, so the clip is a cycle of its own.
+  const keyed =
+    project.objects.some((o) => o.keys.length > 0 || (o.kind === "cover" && o.effects.some((e) => e.keys.length > 0))) ||
+    project.staging.look.some((e) => e.keys.length > 0);
+  if (keyed) periods.push(project.clip.duration);
   return periods;
 }
 

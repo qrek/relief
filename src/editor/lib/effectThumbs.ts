@@ -143,6 +143,7 @@ function renderOne(def: EffectDef): string {
     enabled: true,
     params: { ...defaultEffectParams(def), ...PREVIEW_PARAMS[def.id] },
     colors: defaultEffectColors(def),
+    keys: [],
   };
 
   // An alpha effect works on a cutout: the cube is rendered on nothing, so

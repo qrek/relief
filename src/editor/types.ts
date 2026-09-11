@@ -58,6 +58,15 @@ export type BevelParams = {
 
 export type MotionPreset = "none" | "spin" | "tumble" | "float" | "orbit" | "swing" | "pulse";
 
+/** How a value moves from one key to the next. */
+export type Ease = "linear" | "smooth" | "in" | "out";
+
+/** Where the object is at a moment of the clip. */
+export type TransformKey = { id: string; t: number; transform: Transform; ease: Ease };
+
+/** What an effect's numbers are at a moment of the clip. */
+export type ParamKey = { id: string; t: number; params: Record<string, number>; ease: Ease };
+
 /** Looping movement applied on top of an object's transform. */
 export type Motion = {
   preset: MotionPreset;
@@ -89,6 +98,12 @@ type BaseObject = {
   /** Per-part overrides, keyed by part id. */
   parts: Record<string, PartMaterial>;
   motion: Motion;
+  /**
+   * Keyframes on the transform, sorted by time. With one or more keys the
+   * object is wherever its keys say at the clip's current time, and moving it
+   * writes the key at that time. The looping motion plays on top.
+   */
+  keys: TransformKey[];
 };
 
 export type TextObject = BaseObject &
@@ -135,6 +150,8 @@ export type EffectInstance = {
   enabled: boolean;
   params: Record<string, number>;
   colors: Record<string, string>;
+  /** Keyframes on the numeric parameters, sorted by time. */
+  keys: ParamKey[];
 };
 
 export type CoverSource = {
@@ -286,4 +303,6 @@ export type Project = {
   formatId: string;
   customFormat: { width: number; height: number };
   camera: { position: Vec3; target: Vec3 };
+  /** The clip the keyframes live in: it loops, and a video export is one pass of it. */
+  clip: { duration: number };
 };

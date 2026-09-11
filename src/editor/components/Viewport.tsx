@@ -3,7 +3,9 @@
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls, TransformControls } from "@react-three/drei";
-import { Columns2, Grid3x3, Orbit, Video } from "lucide-react";
+import { Columns2, Grid3x3, Orbit, Pause, Play, Video } from "lucide-react";
+import { sampleTransform } from "../lib/keyframes";
+import { useClockTick } from "./useClockTick";
 import { splitLayout } from "../lib/viewLayout";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -128,9 +130,68 @@ export function Viewport() {
         </Canvas>
       </div>
       <FormatBadge />
+      <Transport />
     </div>
   );
 }
+
+/**
+ * Play, pause and scrub the clip. The keys of the selection are marked under
+ * the scrubber. The clip's length is typed in on the right.
+ */
+function Transport() {
+  const duration = useEditor((s) => s.project.clip.duration);
+  const setClipDuration = useEditor((s) => s.setClipDuration);
+  const keys = useEditor((s) => s.project.objects.find((o) => o.id === s.selectedId)?.keys ?? EMPTY_KEYS);
+  const { time, playing } = useClockTick(20);
+  return (
+    <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-neutral-900/90 px-2 py-1 text-xs text-neutral-300 ring-1 ring-white/10 backdrop-blur">
+      <button
+        type="button"
+        onClick={() => sceneClock.toggle()}
+        title={playing ? "Pause (Space)" : "Play (Space)"}
+        className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/10"
+      >
+        {playing ? <Pause size={13} strokeWidth={1.75} /> : <Play size={13} strokeWidth={1.75} />}
+      </button>
+      <div className="relative w-40">
+        <input
+          type="range"
+          min={0}
+          max={duration}
+          step={0.01}
+          value={Math.min(duration, time)}
+          onChange={(e) => sceneClock.seek(Number(e.target.value))}
+          onPointerDown={() => sceneClock.pause()}
+          title="Where in the clip the scene is"
+          className="w-full accent-[var(--accent)]"
+        />
+        {keys.map((k) => (
+          <span
+            key={k.id}
+            className="pointer-events-none absolute -bottom-0.5 h-1 w-1 -translate-x-1/2 rotate-45 bg-[var(--accent)]"
+            style={{ left: `${(Math.min(duration, k.t) / duration) * 100}%` }}
+          />
+        ))}
+      </div>
+      <span className="tabular-nums text-neutral-400">{time.toFixed(2)} s</span>
+      <span className="text-neutral-600">/</span>
+      <input
+        type="number"
+        min={0.5}
+        max={60}
+        step={0.5}
+        value={duration}
+        onChange={(e) => setClipDuration(Number(e.target.value) || duration)}
+        title="Length of the clip in seconds"
+        className="w-10 rounded bg-transparent px-1 text-right tabular-nums text-neutral-300 outline-none hover:bg-white/5 focus:bg-white/5"
+      />
+      <span className="text-neutral-500">s</span>
+    </div>
+  );
+}
+
+const EMPTY_KEYS: never[] = [];
 
 /** Tells the user the next click sets focus, and gives them a way out. */
 function FocusPickerHint() {
@@ -600,9 +661,13 @@ function SceneContent() {
           mode={transformMode}
           camera={viewCamera}
           domElement={gizmoElement}
-          onMouseDown={() => useRuntime.getState().setInteracting(true)}
+          onMouseDown={() => {
+            useRuntime.getState().setInteracting(true);
+            useRuntime.setState({ dragging: true });
+          }}
           onMouseUp={() => {
             useRuntime.getState().setInteracting(false);
+            useRuntime.setState({ dragging: false });
             const o = selectedObj3D;
             if (!selectedId) return;
             setTransform(selectedId, {
@@ -684,6 +749,18 @@ function ObjectNode({ obj }: { obj: SceneObject }) {
     return () => unregister(obj.id);
   }, [obj.id, register, unregister]);
 
+  // A keyed object is placed by its keys every frame, except while the hand is
+  // on the gizmo: then the hand leads, and the key is written on release.
+  const keyed = obj.keys.length > 0;
+  useFrame(() => {
+    const g = ref.current;
+    if (!g || !keyed || useRuntime.getState().dragging) return;
+    const t = sampleTransform(obj.keys, sceneClock.clipTime, obj.transform);
+    g.position.set(...t.position);
+    g.rotation.set(...t.rotation);
+    g.scale.set(...t.scale);
+  });
+
   // Text and shapes are single-mesh; models publish their own list from ModelMesh.
   useEffect(() => {
     if (obj.kind !== "model") setParts(obj.id, SINGLE_PART);
@@ -750,8 +827,12 @@ function MotionGroup({ motion, children }: { motion: Motion | undefined; childre
   return <group ref={group}>{children}</group>;
 }
 
-/** Advances the shared clock once per frame, ahead of everything that reads it. */
+/** Advances the shared clock once per frame, ahead of everything that reads it, and tells it the clip's length. */
 function ClockDriver() {
+  const duration = useEditor((s) => s.project.clip.duration);
+  useEffect(() => {
+    sceneClock.duration = duration;
+  }, [duration]);
   useFrame((_, delta) => sceneClock.advance(delta), -1000);
   return null;
 }

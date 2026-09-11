@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
+  Ease,
   CoverObject,
   CoverSource,
   EffectInstance,
@@ -25,6 +26,8 @@ import { DEFAULT_KEY_LIGHT, createLight } from "./presets/lights";
 import { useRuntime } from "./runtime";
 import { defaultParams, objectPresetById } from "./presets/objects";
 import { DEFAULT_MOTION } from "./presets/motion";
+import { sceneClock } from "./lib/clock";
+import { sampleParams, sampleTransform, upsertKey } from "./lib/keyframes";
 import {
   MAX_EFFECTS,
   defaultEffectColors,
@@ -55,7 +58,7 @@ const HISTORY_LIMIT = 60;
 const COALESCE_MS = 400;
 // Bump whenever an object or project field is added, so normalizeProject runs on
 // projects already saved in the browser.
-const PERSIST_VERSION = 10;
+const PERSIST_VERSION = 11;
 
 export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -80,6 +83,7 @@ export function createTextObject(partial: Partial<TextObject> = {}): TextObject 
     materialPresetId: "chrome",
     parts: {},
     motion: { ...DEFAULT_MOTION },
+    keys: [],
     text: "Studio",
     fontId: DEFAULT_FONT_ID,
     size: 0.8,
@@ -108,6 +112,7 @@ export function createShapeObject(svg: string, name: string, partial: Partial<Sh
     materialPresetId: "glossy-red",
     parts: {},
     motion: { ...DEFAULT_MOTION },
+    keys: [],
     svg,
     size: 2,
     depth: 0.5,
@@ -132,6 +137,7 @@ export function createModelObject(source: ModelSource, name: string, partial: Pa
     materialPresetId: "soft-clay",
     parts: {},
     motion: { ...DEFAULT_MOTION },
+    keys: [],
     source,
     size: 2.2,
     useSourceMaterials: source.type === "asset",
@@ -151,6 +157,7 @@ export function createLabelObject(partial: Partial<LabelObject> = {}): LabelObje
     materialPresetId: "matte-white",
     parts: {},
     motion: { ...DEFAULT_MOTION },
+    keys: [],
     text: "Headline",
     fontId: DEFAULT_FONT_ID,
     size: 0.09,
@@ -180,6 +187,7 @@ export function createCoverObject(source: CoverSource | null, name: string, part
     materialPresetId: "matte-white",
     parts: {},
     motion: { ...DEFAULT_MOTION },
+    keys: [],
     source,
     effects: [],
     size: 4,
@@ -198,6 +206,7 @@ export function createEffectInstance(effectId: string): EffectInstance {
     enabled: true,
     params: defaultEffectParams(def),
     colors: defaultEffectColors(def),
+    keys: [],
   };
 }
 
@@ -210,6 +219,7 @@ export function createProject(): Project {
     formatId: "square",
     customFormat: { width: 1600, height: 1200 },
     camera: { position: [...DEFAULT_CAMERA.position], target: [...DEFAULT_CAMERA.target] },
+    clip: { duration: 4 },
   };
 }
 
@@ -277,6 +287,7 @@ export function normalizeProject(input: unknown): Project {
         ...o,
         locked: o.locked ?? false,
         motion: { ...DEFAULT_MOTION, ...(o.motion ?? {}) },
+        keys: Array.isArray(o.keys) ? o.keys : [],
         material: {
           ...DEFAULT_MATERIAL,
           ...(o.material ?? {}),
@@ -303,20 +314,30 @@ export function normalizeProject(input: unknown): Project {
       const cover = base as CoverObject;
       return {
         ...cover,
-        effects: Array.isArray(cover.effects) ? cover.effects : [],
+        effects: Array.isArray(cover.effects) ? cover.effects.map(withKeys) : [],
         size: cover.size ?? 4,
         background: cover.background ?? false,
         stretch: cover.stretch ?? 1,
       };
     }) as SceneObject[],
-    staging: normalizeStaging(raw.staging),
+    staging: withLookKeys(normalizeStaging(raw.staging)),
     formatId: raw.formatId ?? "square",
     customFormat: raw.customFormat ?? { width: 1600, height: 1200 },
     camera: raw.camera ?? {
       position: [...DEFAULT_CAMERA.position],
       target: [...DEFAULT_CAMERA.target],
     },
+    clip: { duration: Number(raw.clip?.duration) > 0 ? Number(raw.clip?.duration) : 4 },
   };
+}
+
+/** An effect saved before keyframes existed has none. */
+function withKeys(e: EffectInstance): EffectInstance {
+  return { ...e, keys: Array.isArray(e.keys) ? e.keys : [] };
+}
+
+function withLookKeys(staging: Staging): Staging {
+  return { ...staging, look: staging.look.map(withKeys) };
 }
 
 /** The material a given part renders with, falling back to the object's base material. */
@@ -370,6 +391,17 @@ type EditorState = {
   updateObject: (id: string, patch: Partial<SceneObject>, coalesce?: boolean) => void;
   setModelParam: (id: string, key: string, value: number, coalesce?: boolean) => void;
   setTransform: (id: string, transform: Transform) => void;
+  setClipDuration: (seconds: number) => void;
+  /** Writes a key at that moment of the clip, from where the object is at that moment. */
+  addObjectKey: (id: string, t: number) => void;
+  removeObjectKey: (id: string, keyId: string) => void;
+  setObjectKeysEase: (id: string, ease: Ease) => void;
+  /** Copies the first key to the end of the clip, so the loop closes. */
+  closeObjectLoop: (id: string) => void;
+  addEffectKey: (ownerId: string, instanceId: string, t: number) => void;
+  removeEffectKey: (ownerId: string, instanceId: string, keyId: string) => void;
+  setEffectKeysEase: (ownerId: string, instanceId: string, ease: Ease) => void;
+  closeEffectLoop: (ownerId: string, instanceId: string) => void;
   setMotion: (id: string, patch: Partial<Motion>, coalesce?: boolean) => void;
 
   addEffect: (id: string, effectId: string) => void;
@@ -502,7 +534,75 @@ export const useEditor = create<EditorState>()(
             coalesce,
           ),
         setTransform: (id, transform) =>
-          mutate((p) => patchObject(p, id, (o) => (o.transform = transform))),
+          mutate((p) =>
+            patchObject(p, id, (o) => {
+              o.transform = transform;
+              // A keyed object is wherever its keys say, so moving it means
+              // writing the key at this moment of the clip.
+              if (o.keys.length) {
+                o.keys = upsertKey(o.keys, { t: sceneClock.clipTime, transform, ease: o.keys[0].ease }, newId);
+              }
+            }),
+          ),
+        setClipDuration: (seconds) =>
+          mutate((p) => {
+            p.clip = { duration: Math.min(60, Math.max(0.5, seconds)) };
+          }),
+        addObjectKey: (id, t) =>
+          mutate((p) =>
+            patchObject(p, id, (o) => {
+              const transform = o.keys.length ? sampleTransform(o.keys, t, o.transform) : o.transform;
+              o.keys = upsertKey(o.keys, { t, transform, ease: o.keys[0]?.ease ?? "smooth" }, newId);
+            }),
+          ),
+        removeObjectKey: (id, keyId) =>
+          mutate((p) =>
+            patchObject(p, id, (o) => {
+              o.keys = o.keys.filter((k) => k.id !== keyId);
+              // With the keys gone the object stays where it was last seen.
+              if (o.keys.length === 0) o.transform = sampleTransform([], 0, o.transform);
+            }),
+          ),
+        setObjectKeysEase: (id, ease) =>
+          mutate((p) => patchObject(p, id, (o) => (o.keys = o.keys.map((k) => ({ ...k, ease }))))),
+        closeObjectLoop: (id) =>
+          mutate((p) =>
+            patchObject(p, id, (o) => {
+              const first = o.keys[0];
+              if (first) o.keys = upsertKey(o.keys, { t: p.clip.duration, transform: first.transform, ease: first.ease }, newId);
+            }),
+          ),
+        addEffectKey: (ownerId, instanceId, t) =>
+          mutate((p) =>
+            withEffects(p, ownerId, (list) => {
+              const e = list.find((x) => x.id === instanceId);
+              if (!e) return;
+              const params = e.keys.length ? sampleParams(e.keys, t, e.params) : { ...e.params };
+              e.keys = upsertKey(e.keys, { t, params, ease: e.keys[0]?.ease ?? "smooth" }, newId);
+            }),
+          ),
+        removeEffectKey: (ownerId, instanceId, keyId) =>
+          mutate((p) =>
+            withEffects(p, ownerId, (list) => {
+              const e = list.find((x) => x.id === instanceId);
+              if (e) e.keys = e.keys.filter((k) => k.id !== keyId);
+            }),
+          ),
+        setEffectKeysEase: (ownerId, instanceId, ease) =>
+          mutate((p) =>
+            withEffects(p, ownerId, (list) => {
+              const e = list.find((x) => x.id === instanceId);
+              if (e) e.keys = e.keys.map((k) => ({ ...k, ease }));
+            }),
+          ),
+        closeEffectLoop: (ownerId, instanceId) =>
+          mutate((p) =>
+            withEffects(p, ownerId, (list) => {
+              const e = list.find((x) => x.id === instanceId);
+              const first = e?.keys[0];
+              if (e && first) e.keys = upsertKey(e.keys, { t: p.clip.duration, params: first.params, ease: first.ease }, newId);
+            }),
+          ),
         setMotion: (id, patch, coalesce = true) =>
           mutate(
             (p) =>
@@ -546,7 +646,13 @@ export const useEditor = create<EditorState>()(
             (p) =>
               withEffects(p, id, (list) => {
                 const e = list.find((x) => x.id === instanceId);
-                if (e) e.params = { ...e.params, [key]: value };
+                if (!e) return;
+                e.params = { ...e.params, [key]: value };
+                // A keyed effect reads its keys, so a slider writes the key at this moment.
+                if (e.keys.length) {
+                  const at = sampleParams(e.keys, sceneClock.clipTime, e.params);
+                  e.keys = upsertKey(e.keys, { t: sceneClock.clipTime, params: { ...at, [key]: value }, ease: e.keys[0].ease }, newId);
+                }
               }),
             coalesce,
           ),

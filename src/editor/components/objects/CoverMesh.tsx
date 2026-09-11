@@ -73,6 +73,7 @@ function CoverMedia({ obj }: { obj: CoverObject }) {
     () =>
       obj.effects.some((instance) => {
         if (!instance.enabled) return false;
+        if (instance.keys.length > 0) return true;
         const def = effectById(instance.effectId);
         return def ? isAnimated(def, instance.params) : false;
       }),

@@ -262,7 +262,7 @@ function VideoExport() {
   const loop = suggestedLoopDuration(project);
   const { selected, toggle } = useFormatSelection();
   const [framing, setFraming] = useState<Framing>("fit");
-  const [duration, setDuration] = useState(loop?.duration ?? 4);
+  const [duration, setDuration] = useState(loop?.duration ?? project.clip.duration);
   const [fps, setFps] = useState(30);
   const [videoFormat, setVideoFormat] = useState<VideoFormat>("mp4");
   const [quality, setQuality] = useState<VideoQuality>("high");
