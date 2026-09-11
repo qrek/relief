@@ -1,9 +1,11 @@
 /**
- * The mark: a hill drawn as contour lines, the way relief is drawn on a map.
- * Three closed contours, each shifted a little toward the summit, so the shape
- * leans and reads as a rise rather than a target. It sits in the accent colour
- * and keeps its shape at sixteen pixels.
+ * The mark: a heavy R standing off its tile. The letter is drawn twice, once
+ * pushed down and to the right in a deeper tone and once on top, so it reads
+ * as a raised letterform, which is what relief means. Drawn as a path rather
+ * than set in a font, so it is the same everywhere and holds at sixteen pixels.
  */
+const R_PATH = "M7.2 19.2V5h6.1a4.05 4.05 0 0 1 0 8.1H7.2m5.4 0 5.2 6.1";
+
 export function ReliefMark({ size = 22, className = "" }: { size?: number; className?: string }) {
   return (
     <svg
@@ -15,10 +17,9 @@ export function ReliefMark({ size = 22, className = "" }: { size?: number; class
       role="img"
     >
       <rect width="24" height="24" rx="6" fill="var(--accent)" />
-      <g fill="none" stroke="var(--accent-ink)" strokeWidth="1.7" strokeLinecap="round">
-        <ellipse cx="11.6" cy="13.4" rx="7.6" ry="5.4" transform="rotate(-14 11.6 13.4)" />
-        <ellipse cx="12.8" cy="12.2" rx="4.7" ry="3.2" transform="rotate(-14 12.8 12.2)" />
-        <ellipse cx="13.9" cy="11.1" rx="1.9" ry="1.25" transform="rotate(-14 13.9 11.1)" />
+      <g fill="none" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <path d={R_PATH} stroke="var(--accent-ink)" opacity="0.32" transform="translate(1.7 1.7)" />
+        <path d={R_PATH} stroke="var(--accent-ink)" />
       </g>
     </svg>
   );
