@@ -59,6 +59,10 @@ Sa taille est une fraction de la hauteur du cadre. Attention, `Center` de drei p
 que le sujet recouvre). Le facteur d'échelle suit la distance, donc la taille apparente est la
 même dans les deux cas.
 
+Chaque ligne d'un label est composée séparément (un `Text3D` par ligne dans son propre `Center`),
+sinon l'alignement ne vaut que pour le bloc et un texte centré sort avec toutes ses lignes calées
+à gauche. Le bloc est remonté d'une demi-hauteur de capitale pour que son milieu tombe sur l'ancre.
+
 `material.artwork` imprime une image sur une surface : `lib/artwork.ts` compose la couleur du
 matériau et l'image dans un canvas, puis la pose en `map`. Le décalage est appliqué sur la
 texture, pas sur le canvas, pour que « Across » fasse tourner l'étiquette autour d'une canette.
@@ -83,8 +87,12 @@ compositions finies (sujet, type, lumière, objectif, look) rendues par l'app el
 dans `public/templates/`. Une première série livrée en 2026 avait été jugée plate et supprimée ;
 la règle depuis est **peu, mais très bien**. Un template est une affiche, pas un objet sur un
 fond : il part d'une référence visuelle, se juge à l'image à la taille d'export, et n'entre dans
-la liste que lorsqu'il tient la comparaison. Le premier, « Like no one », vient d'une affiche
-riso : titre en trois lignes derrière, galet à facettes devant, trame quatre couleurs sur le tout.
+la liste que lorsqu'il tient la comparaison. Trois pour l'instant : « Like no one » (affiche riso,
+titre derrière, galet à facettes devant, trame quatre couleurs), « Open sign » (un mot en diodes
+vertes sur un panneau LED, avec sa lueur) et « Carpe feed » (chrome liquide sur papier, titre
+condensé, petites lignes en bas). Pour en ajouter un : construire la scène dans l'app, capturer le
+projet en JSON et une vignette 540 px, puis `add_template.py` (dans le scratchpad de session) ou à
+la main dans `presets/templates.ts` avec des ids fixes lisibles.
 
 En dessous, les scènes que le designer a lui-même enregistrées : le projet sérialisé va dans le
 champ `data` d'une entrée IndexedDB de kind `template`, la vignette dans `blob`.
@@ -113,6 +121,16 @@ Deux leçons de shader qui complètent celles de la profondeur de champ :
 
 Les aides d'édition (gizmo) sont retirées de l'image avant la profondeur de champ ou le look, puis
 redessinées par-dessus le résultat par `drawHelpersOnTop`, pour rester nettes et non tramées.
+
+**Bloom** n'est pas une passe comme les autres : `EffectChain` reconnaît son id et exécute une
+pyramide (préfiltre à seuil doux, descente par moitiés, remontée en tente, composition additive)
+dans `BloomStage`. C'est ce qui donne une lueur large et sans noyau visible ; la passe unique à
+rayon fixe est gardée seulement comme repli. Un shader d'effet ne peut pas faire ça seul, puisqu'il
+n'a qu'une passe.
+
+**LED matrix** lit l'image au centre de chaque cellule et pousse la luminosité le long de la
+teinte de la diode, jamais vers le blanc ; la saturation force la couleur. Le suivre de Bloom donne
+la lueur d'un vrai panneau.
 
 ## Caméra et profondeur de champ
 `lib/postFx.ts` calcule la profondeur de champ sur trois échelles. Ce que chaque pixel voit à

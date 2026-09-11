@@ -70,48 +70,59 @@ export function LabelMesh({ obj }: { obj: LabelObject }) {
     node.matrixWorld.compose(_position, _quaternion, _scale);
   });
 
-  const cacheKey = [value, font.id, obj.letterSpacing, obj.lineHeight, obj.align].join("|");
   const behind = obj.depth === "behind";
+  const lines = (value || " ").split("\n");
+  // Each line is set on its own, so alignment holds line by line the way it
+  // does on a page: a centred caption is centred on every line, not as a block
+  // with a ragged right edge. The block is then lifted so its middle sits on
+  // the anchor; 0.36 is about half a cap height at size one.
+  const blockShift = ((lines.length - 1) * obj.lineHeight) / 2 - 0.36;
 
   return (
     <group ref={group}>
-      {/*
-        drei's Center places the content on the named side of the origin, so a
-        left-aligned line, which should run rightward from its anchor, needs the
-        opposite flag.
-      */}
-      <Center
-        cacheKey={cacheKey}
-        right={obj.align === "left"}
-        left={obj.align === "right"}
-        disableZ
-      >
-        <Text3D
-          font={data}
-          size={1}
-          height={0.02}
-          letterSpacing={obj.letterSpacing}
-          lineHeight={obj.lineHeight}
-          bevelEnabled={false}
-          curveSegments={6}
-          renderOrder={behind ? -10 : 10}
-          userData={{ partId: "body", isLabel: true }}
-        >
-          {value || " "}
-          <meshBasicMaterial
-            color={obj.color}
-            transparent
-            opacity={obj.opacity}
-            toneMapped={false}
-            // In front, the type is a caption laid over the picture and ignores
-            // depth. Behind, it is a sheet at the back of the room that the
-            // subject occludes, so it takes part in the depth test like any wall.
-            depthTest={behind}
-            depthWrite={behind}
-            side={THREE.DoubleSide}
-          />
-        </Text3D>
-      </Center>
+      <group position={[0, blockShift, 0]}>
+        {lines.map((line, i) => (
+          /*
+            drei's Center places the content on the named side of the origin,
+            so a left-aligned line, which should run rightward from its anchor,
+            needs the opposite flag.
+          */
+          <Center
+            key={i}
+            cacheKey={[line, font.id, obj.letterSpacing, obj.align].join("|")}
+            right={obj.align === "left"}
+            left={obj.align === "right"}
+            disableY
+            disableZ
+            position={[0, -i * obj.lineHeight, 0]}
+          >
+            <Text3D
+              font={data}
+              size={1}
+              height={0.02}
+              letterSpacing={obj.letterSpacing}
+              bevelEnabled={false}
+              curveSegments={6}
+              renderOrder={behind ? -10 : 10}
+              userData={{ partId: "body", isLabel: true }}
+            >
+              {line || " "}
+              <meshBasicMaterial
+                color={obj.color}
+                transparent
+                opacity={obj.opacity}
+                toneMapped={false}
+                // In front, the type is a caption laid over the picture and
+                // ignores depth. Behind, it is a sheet at the back of the room
+                // that the subject occludes, so it takes part in the depth test.
+                depthTest={behind}
+                depthWrite={behind}
+                side={THREE.DoubleSide}
+              />
+            </Text3D>
+          </Center>
+        ))}
+      </group>
     </group>
   );
 }

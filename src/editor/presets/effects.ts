@@ -304,6 +304,44 @@ const colour: EffectDef[] = [
     `,
   },
   {
+    id: "led",
+    name: "LED matrix",
+    category: "Colour",
+    params: [
+      n("pitch", "Pitch", 12, 200, 1, 64),
+      n("dot", "Dot size", 0.3, 1.1, 0.01, 0.74),
+      n("gain", "Brightness", 0.5, 3, 0.01, 1.5),
+      n("sat", "Saturation", 1, 4, 0.05, 1.8),
+      n("cut", "Cut-off", 0, 0.6, 0.01, 0.1),
+    ],
+    colors: [
+      { key: "bg", label: "Panel", default: "#040504" },
+      { key: "off", label: "Unlit", default: "#101c10" },
+    ],
+    glsl: /* glsl */ `
+      // A board of round diodes. Each cell reads the picture once at its centre
+      // and lights up with that colour; below the cut-off the diode stays
+      // dark and shows as an unlit dot, the way a real board never goes to
+      // pure black. Follow it with Bloom for the glow.
+      float cells = max(8.0, p_pitch);
+      vec2 asp = vec2(uAspect, 1.0);
+      vec2 g = uv * asp * cells;
+      vec2 cell = floor(g) + 0.5;
+      vec2 su = cell / (asp * cells);
+      vec3 src = clamp(texture2D(uMap, clamp(su, 0.0, 1.0)).rgb, 0.0, 1.0);
+      float d = length(g - cell) * 2.0;
+      float diode = 1.0 - smoothstep(p_dot - 0.1, p_dot + 0.1, d);
+      float br = max(max(src.r, src.g), src.b);
+      float lit = smoothstep(p_cut, p_cut + 0.2, br);
+      // Brightness is pushed along the diode's own hue, never past it: a green
+      // diode driven hard is a brighter green, not a white one.
+      vec3 tint = pow(src / max(br, 0.001), vec3(p_sat));
+      vec3 on = tint * clamp(br * p_gain, 0.0, 1.0);
+      vec3 led = mix(c_off, on, lit);
+      col.rgb = mix(c_bg, led, diode);
+    `,
+  },
+  {
     id: "dither",
     name: "Dither",
     category: "Colour",
@@ -427,10 +465,14 @@ const optical: EffectDef[] = [
     category: "Optical",
     params: [
       n("threshold", "Threshold", 0, 1, 0.01, 0.6),
-      n("radius", "Radius", 1, 30, 0.1, 8),
+      n("radius", "Spread", 1, 30, 0.1, 12),
       n("intensity", "Intensity", 0, 3, 0.01, 0.8),
+      n("knee", "Softness", 0, 1, 0.01, 0.5),
     ],
     colors: [],
+    // Kept only as a fallback: EffectChain runs bloom as a multi-scale pyramid
+    // (see lib/effectChain.ts), which is what a glow needs to spread wide and
+    // stay smooth. A single pass at a fixed radius can do neither.
     glsl: /* glsl */ `
       vec2 px = p_radius / uResolution;
       vec3 sum = vec3(0.0);

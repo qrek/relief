@@ -573,3 +573,25 @@ titre en trois lignes, bleu de presse, derrière un galet jaune à facettes, le 
 Il a été construit d'après une référence d'affiche riso et jugé à la taille d'export, en six
 itérations, avant d'entrer dans la liste. Il apparaît en tête de la bibliothèque Scenes et se charge
 d'un clic.
+
+## 25. Lueur, panneau LED, chrome liquide
+
+### Bloom refait
+Le glow n'était qu'une passe de flou unique à rayon fixe : il ne pouvait ni s'étendre ni rester
+lisse. Bloom est maintenant une pyramide : ce qui dépasse le seuil, avec un genou doux, descend par
+moitiés successives et remonte avec un filtre tente à chaque étage, puis s'ajoute à l'image. La
+lueur s'étend aussi loin que demandé sans jamais montrer de noyau. Elle sert aux covers comme au look.
+
+### LED matrix
+Nouvel effet : un panneau de diodes rondes. Chaque cellule lit l'image en son centre et s'allume de
+cette couleur ; sous le seuil la diode reste éteinte et visible, comme un vrai panneau ne descend
+jamais au noir pur. La luminosité est poussée le long de la teinte, jamais vers le blanc.
+
+### Typographie plate centrée ligne par ligne
+Chaque ligne d'un texte plat est composée séparément, donc un texte centré ou aligné à droite
+l'est sur chaque ligne, pas seulement en bloc.
+
+### Deux templates de plus
+- **Open sign** : un mot en diodes vertes sur panneau noir, avec la lueur d'un vrai panneau. Carré.
+- **Carpe feed** : une masse de chrome liquide sur papier, titre condensé en haut, petites lignes
+  en bas. Portrait. Le bloom y ne sert qu'à faire respirer les reflets.
