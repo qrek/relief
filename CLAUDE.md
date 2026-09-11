@@ -262,8 +262,27 @@ objets et sur un sol invisible en `shadowMaterial` (`shadowCatcher`) à `floorY`
 (`softness`). Les ombres de contact (`shadows`) restent un réglage à part. `presets/lights.ts` porte
 `createLight` et les rigs (trois points, softbox, soleil rasant, paire de rims).
 
-L'environnement est un preset drei ou `asset:<id>` pour une carte importée (`.hdr`, `.exr`, ou une
-image équirectangulaire), stockée comme asset de kind `hdri` et chargée par `lib/hdri.ts`.
+L'environnement est un **studio** (`studio:<id>`, `presets/studios.ts`), un preset drei (une
+photo de lieu) ou `asset:<id>` pour une carte importée (`.hdr`, `.exr`, ou une image
+équirectangulaire), stockée comme asset de kind `hdri` et chargée par `lib/hdri.ts`.
+
+Un studio n'est pas une photo mais un **rig** : des panneaux de lumière (rect, disque, anneau)
+avec une couleur et une intensité linéaire, dans une pièce d'une teinte donnée, décrits en données
+et construits en scène three par `buildStudioScene`, puis cuits en carte d'environnement par
+`PMREMGenerator.fromScene` (`lib/studioEnv.ts`, un cache par renderer parce qu'une texture
+appartient à son contexte). C'est ce qui fait qu'un chrome montre un vrai softbox qui se courbe et
+qu'un verre trouve son bord sur une bande de rim. Quatre rigs : Softbox (polyvalent, défaut des
+nouveaux projets), Window (lumière du jour latérale, rebond chaud), Rim (pièce noire, deux bandes
+derrière, pour le chrome et le verre), Table (cyclo blanc, anneau, e-commerce). Minuscules,
+réglables, sans licence ; pour en ajouter un, une entrée dans `STUDIOS`.
+
+Les vignettes de matériaux (`lib/materialThumbs.ts`) sont **rendues** : une sphère sous le studio
+Softbox, un petit carton sombre derrière pour que le verre réfracte quelque chose, une par tick
+comme les vignettes d'effets. Le swatch peint sert d'attente.
+
+**Développement** (`staging.tone`, `staging.exposure`) : ACES (défaut, celui des templates), AgX
+(film, garde les couleurs saturées) ou Neutral (teinte la plus fidèle, pour une couleur de marque),
+posés sur le renderer ; three relie les matériaux tout seul et la passe de look lit le même mode.
 
 ## Vue caméra, vue libre, les deux
 `viewMode` dans le store vaut `camera`, `free` ou `split`, comme les regards de Blender. **Vue

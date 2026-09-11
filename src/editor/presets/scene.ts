@@ -1,8 +1,9 @@
 import type { CanvasFormat, EnvironmentId, Staging } from "../types";
 import { DEFAULT_KEY_LIGHT } from "./lights";
 
+/** The photographs of places drei ships; the studios in presets/studios.ts come before them. */
 export const ENVIRONMENTS: { id: EnvironmentId; name: string }[] = [
-  { id: "studio", name: "Studio" },
+  { id: "studio", name: "Studio (photo)" },
   { id: "city", name: "City" },
   { id: "sunset", name: "Sunset" },
   { id: "dawn", name: "Dawn" },
@@ -15,7 +16,7 @@ export const ENVIRONMENTS: { id: EnvironmentId; name: string }[] = [
 ];
 
 export const DEFAULT_STAGING: Staging = {
-  environment: "studio",
+  environment: "studio:softbox",
   envIntensity: 1,
   envRotation: 0,
   envAsBackground: false,
@@ -38,6 +39,8 @@ export const DEFAULT_STAGING: Staging = {
   blades: 0,
   bladeAngle: 0,
   bokehHighlight: 1,
+  tone: "aces",
+  exposure: 1,
   sceneScale: 50,
   look: [],
 };

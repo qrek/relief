@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { effectiveMaterial, useEditor, useSelectedObject } from "../../store";
 import { usePartsOf } from "../../runtime";
 import { MATERIAL_CATEGORIES, MATERIAL_PRESETS } from "../../presets/materials";
+import { materialThumbnail, subscribeMaterialThumbnail } from "../../lib/materialThumbs";
 import type { Artwork, MaterialParams, MaterialPreset } from "../../types";
 import { MediaLibrary } from "./MediaLibrary";
 import { Button, ColorField, Row, Section, Slider, Toggle } from "../ui";
@@ -79,6 +80,21 @@ function ArtworkSection({
         </div>
       )}
     </Section>
+  );
+}
+
+/** The rendered ball for a preset; the painted swatch stands in until it exists. */
+function MaterialBall({ preset, className }: { preset: MaterialPreset; className: string }) {
+  const [url, setUrl] = useState(() => materialThumbnail(preset));
+  useEffect(() => subscribeMaterialThumbnail(preset, setUrl), [preset]);
+  return (
+    <span className={`block overflow-hidden ${className}`} style={url ? undefined : swatchStyle(preset)} aria-hidden>
+      {url && (
+        // A data URL rendered in the browser; nothing for next/image to do.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" className="block h-full w-full object-cover" draggable={false} />
+      )}
+    </span>
   );
 }
 
@@ -216,7 +232,7 @@ export function MaterialPanel() {
                 target.materialPresetId === p.id ? "bg-[var(--accent-soft)] ring-1 ring-[var(--accent-edge)]" : "hover:bg-white/10"
               }`}
             >
-              <span className="h-11 w-11 rounded-full ring-1 ring-white/10" style={swatchStyle(p)} />
+              <MaterialBall preset={p} className="h-14 w-14 rounded-full ring-1 ring-white/10" />
               <span className="w-full truncate text-center text-[10px] text-neutral-400 group-hover:text-neutral-200">
                 {p.name}
               </span>

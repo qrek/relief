@@ -281,6 +281,14 @@ export type Staging = {
   bladeAngle: number;
   /** How strongly highlights gather into bokeh discs. */
   bokehHighlight: number;
+  /**
+   * How the picture is developed from the scene's light. ACES is punchy and
+   * pulls saturated colours toward white; AgX keeps them, like film; Neutral
+   * changes hue least, for brand colours that must stay exact.
+   */
+  tone: "aces" | "agx" | "neutral";
+  /** Exposure of the development, 1 as shot. */
+  exposure: number;
   /** Millimetres one world unit stands for. Smaller turns the lens macro. */
   sceneScale: number;
   /**

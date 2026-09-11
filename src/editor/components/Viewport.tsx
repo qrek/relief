@@ -447,6 +447,16 @@ function SceneContent() {
     }
   }, [gl, scene, camera]);
 
+  // The development of the picture lives on the renderer; three re-links the
+  // materials when it changes, and the look pass reads it for its own copy.
+  useEffect(() => {
+    const renderer = useRuntime.getState().gl;
+    if (!renderer) return;
+    renderer.toneMapping =
+      staging.tone === "agx" ? THREE.AgXToneMapping : staging.tone === "neutral" ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = staging.exposure;
+  }, [gl, staging.tone, staging.exposure]);
+
   useEffect(() => {
     const cam = useRuntime.getState().camera;
     if (!cam) return;

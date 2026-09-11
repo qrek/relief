@@ -6,6 +6,8 @@ import { Environment } from "@react-three/drei";
 import * as THREE from "three";
 import type { LightType, SceneLight, Staging } from "../types";
 import { isImportedEnvironment, loadEnvironment } from "../lib/hdri";
+import { isStudio } from "../presets/studios";
+import { studioTexture } from "../lib/studioEnv";
 
 /** The distance a sun is placed at: far enough that its shadow frames the whole scene. */
 const SUN_DISTANCE = 14;
@@ -281,8 +283,27 @@ export function SceneEnvironment({ staging }: { staging: Staging }) {
   if (isImportedEnvironment(staging.environment)) {
     return <ImportedEnvironment id={staging.environment} {...shared} />;
   }
+  if (isStudio(staging.environment)) {
+    return <StudioEnvironment id={staging.environment} {...shared} />;
+  }
   return <Environment preset={staging.environment as PresetName} {...shared} />;
 }
+
+/** A studio rig, baked once per renderer, used as the environment and, if asked, the background. */
+function StudioEnvironment({ id, ...shared }: { id: string } & EnvironmentShared) {
+  const gl = useThree((s) => s.gl);
+  const map = useMemo(() => studioTexture(gl, id), [gl, id]);
+  if (!map) return null;
+  return <Environment map={map} {...shared} />;
+}
+
+type EnvironmentShared = {
+  background: boolean;
+  backgroundBlurriness: number;
+  environmentIntensity: number;
+  environmentRotation: [number, number, number];
+  backgroundRotation: [number, number, number];
+};
 
 type PresetName = NonNullable<Parameters<typeof Environment>[0]["preset"]>;
 

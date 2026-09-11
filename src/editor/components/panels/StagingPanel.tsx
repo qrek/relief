@@ -9,6 +9,7 @@ import { importEnvironmentFile, listImportedEnvironments } from "../../lib/hdri"
 import { deleteAsset, type AssetMeta } from "../../lib/assets";
 import { useRuntime } from "../../runtime";
 import { DEFAULT_CAMERA, ENVIRONMENTS } from "../../presets/scene";
+import { STUDIOS, studioById } from "../../presets/studios";
 import { focusField } from "../../lib/postFx";
 import { Button, ColorField, Row, Section, SelectField, Slider, Toggle } from "../ui";
 
@@ -82,6 +83,7 @@ export function StagingPanel() {
           label="Map"
           value={st.environment}
           options={[
+            ...STUDIOS.map((s) => ({ value: s.id, label: `${s.name} · studio` })),
             ...ENVIRONMENTS.map((e) => ({ value: e.id as string, label: e.name })),
             ...imported.map((a) => ({ value: `asset:${a.id}`, label: `${a.name} · yours` })),
           ]}
@@ -121,6 +123,9 @@ export function StagingPanel() {
             </Button>
           </Row>
         )}
+        {studioById(st.environment) && (
+          <p className="text-[11px] leading-relaxed text-neutral-500">{studioById(st.environment)!.blurb}</p>
+        )}
         <Slider label="Intensity" value={st.envIntensity} min={0} max={4} onChange={(envIntensity) => setStaging({ envIntensity })} />
         <Slider
           label="Rotation"
@@ -142,6 +147,23 @@ export function StagingPanel() {
         {!st.transparent && (
           <ColorField label="Color" value={st.background} onChange={(background) => setStaging({ background })} />
         )}
+      </Section>
+
+      <Section title="Development">
+        <SelectField
+          label="Tone"
+          value={st.tone}
+          options={[
+            { value: "aces", label: "ACES · punchy" },
+            { value: "agx", label: "AgX · film" },
+            { value: "neutral", label: "Neutral · exact colour" },
+          ]}
+          onChange={(tone) => setStaging({ tone }, false)}
+        />
+        <Slider label="Exposure" value={st.exposure} min={0.25} max={3} step={0.01} format={(v) => `${v.toFixed(2)}×`} onChange={(exposure) => setStaging({ exposure })} />
+        <p className="text-[11px] leading-relaxed text-neutral-500">
+          How the light of the scene becomes a picture. ACES pushes saturated colour toward white; AgX keeps it, like film; Neutral moves hue least.
+        </p>
       </Section>
 
       <LightsSection />
