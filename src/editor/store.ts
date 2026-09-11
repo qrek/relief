@@ -5,6 +5,7 @@ import type {
   CoverSource,
   EffectInstance,
   LabelObject,
+  SceneLight,
   MaterialParams,
   Motion,
   ModelObject,
@@ -20,6 +21,8 @@ import type {
 import { DEFAULT_ARTWORK, DEFAULT_MATERIAL, materialFromPreset } from "./presets/materials";
 import { DEFAULT_FONT_ID } from "./presets/fonts";
 import { CANVAS_FORMATS, DEFAULT_CAMERA, DEFAULT_STAGING } from "./presets/scene";
+import { DEFAULT_KEY_LIGHT, createLight } from "./presets/lights";
+import { useRuntime } from "./runtime";
 import { defaultParams, objectPresetById } from "./presets/objects";
 import { DEFAULT_MOTION } from "./presets/motion";
 import {
@@ -52,7 +55,7 @@ const HISTORY_LIMIT = 60;
 const COALESCE_MS = 400;
 // Bump whenever an object or project field is added, so normalizeProject runs on
 // projects already saved in the browser.
-const PERSIST_VERSION = 9;
+const PERSIST_VERSION = 10;
 
 export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -226,6 +229,42 @@ function withEffects(p: Project, ownerId: string, fn: (list: EffectInstance[]) =
   if (owner?.kind === "cover") fn(owner.effects);
 }
 
+type LegacyStaging = Partial<Staging> & {
+  lightColor?: string;
+  lightIntensity?: number;
+  lightAzimuth?: number;
+  lightElevation?: number;
+};
+
+/**
+ * Scenes saved before lights became a list had one directional light spelled
+ * out as four fields. It becomes the key light, in the same place, so a saved
+ * scene and every template open looking exactly as they did.
+ */
+function normalizeStaging(input: unknown): Staging {
+  const raw = (input ?? {}) as LegacyStaging;
+  const { lightColor, lightIntensity, lightAzimuth, lightElevation, ...rest } = raw;
+  const lights: SceneLight[] = Array.isArray(rest.lights)
+    ? rest.lights.map((l) => ({ ...DEFAULT_KEY_LIGHT, ...l }))
+    : [
+        createLight("sun", {
+          id: "key",
+          name: "Key",
+          color: lightColor ?? DEFAULT_KEY_LIGHT.color,
+          intensity: lightIntensity ?? DEFAULT_KEY_LIGHT.intensity,
+          azimuth: lightAzimuth ?? DEFAULT_KEY_LIGHT.azimuth,
+          elevation: lightElevation ?? DEFAULT_KEY_LIGHT.elevation,
+          castShadow: rest.shadows ?? true,
+        }),
+      ];
+  return {
+    ...DEFAULT_STAGING,
+    ...rest,
+    lights,
+    look: Array.isArray(rest.look) ? rest.look : [],
+  };
+}
+
 /** Fills in fields added after a project was saved, so older files keep opening. */
 export function normalizeProject(input: unknown): Project {
   const raw = (input ?? {}) as Partial<Project>;
@@ -270,11 +309,7 @@ export function normalizeProject(input: unknown): Project {
         stretch: cover.stretch ?? 1,
       };
     }) as SceneObject[],
-    staging: {
-      ...DEFAULT_STAGING,
-      ...(raw.staging ?? {}),
-      look: Array.isArray(raw.staging?.look) ? raw.staging.look : [],
-    },
+    staging: normalizeStaging(raw.staging),
     formatId: raw.formatId ?? "square",
     customFormat: raw.customFormat ?? { width: 1600, height: 1200 },
     camera: raw.camera ?? {
@@ -594,16 +629,22 @@ export const useEditor = create<EditorState>()(
         setCamera: (position, target) =>
           set((s) => ({ project: { ...s.project, camera: { position, target } } })),
         renameProject: (name) => set((s) => ({ project: { ...s.project, name } })),
-        newProject: () =>
-          set({ project: createProject(), selectedId: null, selectedPartId: null, past: [], future: [] }),
-        loadProject: (project) =>
+        newProject: () => {
+          set({ project: createProject(), selectedId: null, selectedPartId: null, past: [], future: [] });
+          useRuntime.getState().requestCameraReset();
+        },
+        loadProject: (project) => {
           set({
             project: normalizeProject(project),
             selectedId: null,
             selectedPartId: null,
             past: [],
             future: [],
-          }),
+          });
+          // The live camera follows the document it just received. Without this
+          // a template opened over another scene kept that scene's framing.
+          useRuntime.getState().requestCameraReset();
+        },
 
         undo: () => {
           const { past, project, future, selectedId } = get();

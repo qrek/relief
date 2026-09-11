@@ -1,7 +1,12 @@
 "use client";
 
 import * as THREE from "three";
+import { useEffect, useRef, useState } from "react";
+import { Upload } from "lucide-react";
 import { useEditor } from "../../store";
+import { LightsSection } from "./LightsSection";
+import { importEnvironmentFile, listImportedEnvironments } from "../../lib/hdri";
+import { deleteAsset, type AssetMeta } from "../../lib/assets";
 import { useRuntime } from "../../runtime";
 import { DEFAULT_CAMERA, ENVIRONMENTS } from "../../presets/scene";
 import { focusField } from "../../lib/postFx";
@@ -20,6 +25,15 @@ export function StagingPanel() {
 
   const focusTarget = selectedId ? objects[selectedId] : undefined;
   const canFocus = !!focusTarget;
+
+  const [imported, setImported] = useState<AssetMeta[]>([]);
+  const [envError, setEnvError] = useState<string | null>(null);
+  const hdriRef = useRef<HTMLInputElement>(null);
+  const refreshEnvironments = () => {
+    listImportedEnvironments().then(setImported).catch(() => setImported([]));
+  };
+  useEffect(refreshEnvironments, []);
+  const importedCurrent = imported.find((a) => `asset:${a.id}` === st.environment);
 
   const field = focusField({
     focus: st.focusDistance,
@@ -55,13 +69,58 @@ export function StagingPanel() {
 
   return (
     <>
-      <Section title="Environment">
+      <Section
+        title="Environment"
+        right={
+          <Button variant="ghost" onClick={() => hdriRef.current?.click()} title="Import a .hdr or .exr map" className="flex items-center gap-1">
+            <Upload size={12} strokeWidth={1.75} />
+            Import
+          </Button>
+        }
+      >
         <SelectField
-          label="HDRI"
+          label="Map"
           value={st.environment}
-          options={ENVIRONMENTS.map((e) => ({ value: e.id, label: e.name }))}
+          options={[
+            ...ENVIRONMENTS.map((e) => ({ value: e.id as string, label: e.name })),
+            ...imported.map((a) => ({ value: `asset:${a.id}`, label: `${a.name} · yours` })),
+          ]}
           onChange={(environment) => setStaging({ environment }, false)}
         />
+        <input
+          ref={hdriRef}
+          type="file"
+          accept=".hdr,.exr,.jpg,.jpeg,.png"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (!file) return;
+            setEnvError(null);
+            try {
+              const meta = await importEnvironmentFile(file);
+              refreshEnvironments();
+              setStaging({ environment: `asset:${meta.id}` }, false);
+            } catch (err) {
+              setEnvError(err instanceof Error ? err.message : "Could not import that map");
+            }
+          }}
+        />
+        {envError && <p className="text-[11px] text-red-300">{envError}</p>}
+        {importedCurrent && (
+          <Row label="">
+            <Button
+              variant="ghost"
+              onClick={async () => {
+                await deleteAsset(importedCurrent.id);
+                setStaging({ environment: "studio" }, false);
+                refreshEnvironments();
+              }}
+            >
+              Remove this map from your library
+            </Button>
+          </Row>
+        )}
         <Slider label="Intensity" value={st.envIntensity} min={0} max={4} onChange={(envIntensity) => setStaging({ envIntensity })} />
         <Slider
           label="Rotation"
@@ -85,20 +144,27 @@ export function StagingPanel() {
         )}
       </Section>
 
-      <Section title="Light">
-        <ColorField label="Color" value={st.lightColor} onChange={(lightColor) => setStaging({ lightColor })} />
-        <Slider label="Intensity" value={st.lightIntensity} min={0} max={8} onChange={(lightIntensity) => setStaging({ lightIntensity })} />
-        <Slider label="Azimuth" value={st.lightAzimuth} min={-180} max={180} step={1} format={(v) => `${Math.round(v)}°`} onChange={(lightAzimuth) => setStaging({ lightAzimuth })} />
-        <Slider label="Elevation" value={st.lightElevation} min={-10} max={90} step={1} format={(v) => `${Math.round(v)}°`} onChange={(lightElevation) => setStaging({ lightElevation })} />
-      </Section>
+      <LightsSection />
 
       <Section title="Shadows">
-        <Toggle label="Enabled" value={st.shadows} onChange={(shadows) => setStaging({ shadows }, false)} />
+        <Toggle label="Cast" value={st.castShadows} onChange={(castShadows) => setStaging({ castShadows }, false)} />
+        {st.castShadows && (
+          <>
+            <Toggle label="On the floor" value={st.shadowCatcher} onChange={(shadowCatcher) => setStaging({ shadowCatcher }, false)} />
+            <p className="text-[11px] leading-relaxed text-neutral-500">
+              Each light that casts throws a real shadow onto the objects and, if the floor is on, onto an invisible
+              ground at the floor height. Softness is set per light.
+            </p>
+          </>
+        )}
+        <Toggle label="Contact" value={st.shadows} onChange={(shadows) => setStaging({ shadows }, false)} />
         {st.shadows && (
+          <Slider label="Blur" value={st.shadowBlur} min={0} max={10} step={0.1} onChange={(shadowBlur) => setStaging({ shadowBlur })} />
+        )}
+        {(st.shadows || st.castShadows) && (
           <>
             <Slider label="Floor" value={st.floorY} min={-5} max={2} onChange={(floorY) => setStaging({ floorY })} />
             <Slider label="Opacity" value={st.shadowOpacity} min={0} max={1} onChange={(shadowOpacity) => setStaging({ shadowOpacity })} />
-            <Slider label="Blur" value={st.shadowBlur} min={0} max={10} step={0.1} onChange={(shadowBlur) => setStaging({ shadowBlur })} />
           </>
         )}
       </Section>

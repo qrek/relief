@@ -6,6 +6,7 @@ import type { Project } from "../../types";
 import { Button, IconButton } from "../ui";
 import { CircleHelp, FilePlus2, FolderOpen, LayoutGrid, Redo2, Save, Undo2 } from "lucide-react";
 import { SceneLibrary } from "./SceneLibrary";
+import { ReliefMark } from "../Logo";
 
 export function TopBar() {
   const project = useEditor((s) => s.project);
@@ -34,7 +35,7 @@ export function TopBar() {
   return (
     <header className="relative flex h-12 items-center gap-3 border-b border-white/5 bg-neutral-900 px-3">
       <div className="flex items-center gap-2">
-        <span className="grid h-6 w-6 place-items-center rounded-md bg-[var(--accent)] text-[11px] font-bold text-[var(--accent-ink)]">R</span>
+        <ReliefMark size={22} />
         <span className="text-sm font-semibold tracking-tight text-neutral-100">Relief</span>
       </div>
       <div className="mx-2 h-5 w-px bg-white/10" />

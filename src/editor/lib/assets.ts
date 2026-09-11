@@ -1,4 +1,4 @@
-export type AssetKind = "model" | "media" | "template" | "font";
+export type AssetKind = "model" | "media" | "template" | "font" | "hdri";
 
 export type StoredAsset = {
   id: string;

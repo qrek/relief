@@ -4,7 +4,6 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import {
   ContactShadows,
-  Environment,
   OrbitControls,
   TransformControls,
 } from "@react-three/drei";
@@ -15,6 +14,7 @@ import { useRuntime } from "../runtime";
 import type { Motion, PartInfo, SceneObject, Staging } from "../types";
 import { DepthOfFieldPass, focalToFov } from "../lib/postFx";
 import { LookPass, lookIsActive } from "../lib/look";
+import { SceneEnvironment, SceneLights } from "./Lights";
 import { drawHelpersOnTop, hideEditorHelpers } from "../lib/export";
 import { sceneClock } from "../lib/clock";
 import { applyMotion } from "../presets/motion";
@@ -104,7 +104,9 @@ export function Viewport() {
         <SafeAreaOverlay />
         <FocusPickerHint />
         <Canvas
-          shadows
+          // Percentage-closer shadows honour each light's blur radius; the
+          // "soft" variant ignores it, so softness would have no effect.
+          shadows="percentage"
           dpr={DPR_FOR_QUALITY[quality]}
           // The drawing buffer is kept so video export can read frames back after awaiting the encoder.
           gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
@@ -305,14 +307,6 @@ function SceneContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetSignal]);
 
-  const az = THREE.MathUtils.degToRad(staging.lightAzimuth);
-  const el = THREE.MathUtils.degToRad(staging.lightElevation);
-  const lightPos: [number, number, number] = [
-    Math.cos(el) * Math.sin(az) * 8,
-    Math.sin(el) * 8,
-    Math.cos(el) * Math.cos(az) * 8,
-  ];
-
   return (
     <>
       <ClockDriver />
@@ -321,25 +315,9 @@ function SceneContent() {
         <color attach="background" args={[staging.background]} />
       )}
       <Suspense fallback={null}>
-        <Environment
-          preset={staging.environment}
-          background={staging.envAsBackground}
-          backgroundBlurriness={staging.envBlur}
-          environmentIntensity={staging.envIntensity}
-          environmentRotation={[0, staging.envRotation, 0]}
-          backgroundRotation={[0, staging.envRotation, 0]}
-        />
+        <SceneEnvironment staging={staging} />
       </Suspense>
-      <directionalLight
-        position={lightPos}
-        color={staging.lightColor}
-        intensity={staging.lightIntensity}
-        castShadow={staging.shadows}
-        shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0002}
-      >
-        <orthographicCamera attach="shadow-camera" args={[-8, 8, 8, -8, 0.1, 30]} />
-      </directionalLight>
+      <SceneLights staging={staging} />
       {staging.shadows && (
         <ContactShadows
           position={[0, staging.floorY, 0]}

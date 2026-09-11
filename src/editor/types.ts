@@ -200,8 +200,34 @@ export type EnvironmentId =
   | "lobby"
   | "park";
 
+export type LightType = "sun" | "spot" | "point";
+
+/**
+ * One light on a sphere around the subject. A sun is a parallel light and
+ * ignores distance except to frame its shadow; a spot and a point sit at the
+ * distance given. Angles are in degrees on the panel and in the file.
+ */
+export type SceneLight = {
+  id: string;
+  name: string;
+  type: LightType;
+  enabled: boolean;
+  color: string;
+  intensity: number;
+  azimuth: number;
+  elevation: number;
+  distance: number;
+  /** Spot only: full cone angle, and how soft its edge is from 0 to 1. */
+  angle: number;
+  penumbra: number;
+  castShadow: boolean;
+  /** Blur radius of the shadow this light casts. */
+  softness: number;
+};
+
 export type Staging = {
-  environment: EnvironmentId;
+  /** A preset id, or `asset:<id>` for an imported equirectangular map. */
+  environment: EnvironmentId | string;
   envIntensity: number;
   /** radians around Y */
   envRotation: number;
@@ -209,12 +235,12 @@ export type Staging = {
   envBlur: number;
   background: string;
   transparent: boolean;
-  lightColor: string;
-  lightIntensity: number;
-  /** degrees */
-  lightAzimuth: number;
-  /** degrees */
-  lightElevation: number;
+  lights: SceneLight[];
+  /** Lights cast real shadows onto objects and onto the floor catcher. */
+  castShadows: boolean;
+  /** An invisible floor that receives cast shadows, at floorY. */
+  shadowCatcher: boolean;
+  /** Contact shadows: the soft dark pool under everything. */
   shadows: boolean;
   floorY: number;
   shadowOpacity: number;

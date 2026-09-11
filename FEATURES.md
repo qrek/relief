@@ -611,3 +611,23 @@ Le sélecteur de police est un vrai panneau à trois sources, recherche en tête
 
 Limite connue : les polices variables sont servies en graisses fixes, on choisit une graisse, pas un
 curseur continu.
+
+## 27. Lumière
+
+### Plusieurs lumières
+La lumière unique devient une liste : soleil, spot ou point, chacune nommée, avec sa couleur, son
+intensité, son azimut et sa hauteur autour du sujet, sa distance pour un spot ou un point, son cône
+et la douceur de son bord pour un spot. Quatre rigs mettent un dispositif classique en place d'un
+clic : studio trois points, softbox au-dessus, soleil rasant, paire de rims chaude et froide.
+
+### Ombres portées
+Chaque lumière peut porter une vraie ombre, sur les objets et sur un sol invisible à la hauteur du
+plancher, avec une douceur propre. Les ombres de contact d'avant restent disponibles à côté.
+
+### Environnement importé
+Un fichier `.hdr` ou `.exr`, ou une image équirectangulaire, s'importe et sert d'éclairage et de
+fond comme les presets. Il est stocké dans le navigateur.
+
+### Logo
+Une marque pour Relief : une colline dessinée en courbes de niveau, comme le relief sur une carte,
+dans la couleur d'accent. Dans la barre et dans l'onglet du navigateur.

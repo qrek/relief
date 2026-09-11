@@ -37,6 +37,9 @@ résout lequel afficher. Deux refontes ont été essayées puis écartées par l
 pupitre caméra en bas, puis une disposition façon Figma) ; ne pas reproposer de refonte de
 structure sans qu'il la demande.
 
+Le logo est `components/Logo.tsx` (un relief dessiné en courbes de niveau, dans l'accent) et
+`app/icon.svg` pour l'onglet ; les deux doivent rester identiques.
+
 Les icônes viennent de `lucide-react` (trait 1.75, 13 px dans les panneaux, 15 px dans la barre,
 18 px dans le rail), via `IconButton` de `ui.tsx`, dont le `title` est obligatoire : le mot part
 dans l'info-bulle, jamais nulle part. Une icône remplace un mot seulement là où le mot faisait
@@ -154,6 +157,25 @@ n'a qu'une passe.
 **LED matrix** lit l'image au centre de chaque cellule et pousse la luminosité le long de la
 teinte de la diode, jamais vers le blanc ; la saturation force la couleur. Le suivre de Bloom donne
 la lueur d'un vrai panneau.
+
+## Lumières, ombres, environnement
+`staging.lights` est une liste de `SceneLight` (soleil, spot, point), chacune placée comme le
+ferait un photographe : azimut, hauteur et distance sur une sphère autour de l'origine, jamais
+par un gizmo. La convention d'azimut est celle de l'unique lumière d'avant (zéro devant le sujet,
+positif à droite) ; `lightPosition()` dans `components/Lights.tsx` en est la seule définition.
+Les anciens champs `lightColor/Intensity/Azimuth/Elevation` sont migrés en lumière clé par
+`normalizeStaging`, au même endroit, ce qui garde les scènes enregistrées et les templates
+identiques au pixel près (vérifié sur « Like no one »).
+
+Spots et points ont `decay` à zéro : le curseur veut dire luminosité, pas watts, et reculer une
+lumière pour adoucir son ombre ne l'éteint pas. Les ombres portées (`castShadows`) tombent sur les
+objets et sur un sol invisible en `shadowMaterial` (`shadowCatcher`) à `floorY` ; le canvas est en
+`shadows="percentage"` parce que c'est la seule variante qui honore le rayon de flou par lumière
+(`softness`). Les ombres de contact (`shadows`) restent un réglage à part. `presets/lights.ts` porte
+`createLight` et les rigs (trois points, softbox, soleil rasant, paire de rims).
+
+L'environnement est un preset drei ou `asset:<id>` pour une carte importée (`.hdr`, `.exr`, ou une
+image équirectangulaire), stockée comme asset de kind `hdri` et chargée par `lib/hdri.ts`.
 
 ## Caméra et profondeur de champ
 `lib/postFx.ts` calcule la profondeur de champ sur trois échelles. Ce que chaque pixel voit à

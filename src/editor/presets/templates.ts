@@ -1,5 +1,3 @@
-import type { Project } from "../types";
-
 /**
  * A finished picture with everything that made it: subject, type, light, lens
  * and the look. It is a starting point the designer takes over, not a fill-in
@@ -14,7 +12,12 @@ export type TemplateDef = {
   blurb: string;
   /** Rendered by the app itself, from the template as it is. */
   thumbnail: string;
-  project: Omit<Project, "id">;
+  /**
+   * The project as it was saved. It is typed loosely on purpose: it goes
+   * through normalizeProject on load, which is also what lets a template
+   * written before a field existed keep opening.
+   */
+  project: Record<string, unknown>;
 };
 
 export const TEMPLATES: TemplateDef[] = [
@@ -162,13 +165,13 @@ export const TEMPLATES: TemplateDef[] = [
           "fontId": "staatliches",
           "size": 0.258,
           "letterSpacing": -0.005,
-          "lineHeight": 0.88,
+          "lineHeight": 1.25,
           "align": "center",
           "textCase": "upper",
           "color": "#2a62ff",
           "opacity": 1,
           "anchorX": 0,
-          "anchorY": -0.01,
+          "anchorY": -0.03,
           "tilt": 0,
           "depth": "behind"
         },

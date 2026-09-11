@@ -1,4 +1,5 @@
 import type { CanvasFormat, EnvironmentId, Staging } from "../types";
+import { DEFAULT_KEY_LIGHT } from "./lights";
 
 export const ENVIRONMENTS: { id: EnvironmentId; name: string }[] = [
   { id: "studio", name: "Studio" },
@@ -21,10 +22,9 @@ export const DEFAULT_STAGING: Staging = {
   envBlur: 0.6,
   background: "#0e0e10",
   transparent: false,
-  lightColor: "#ffffff",
-  lightIntensity: 2,
-  lightAzimuth: 35,
-  lightElevation: 45,
+  lights: [{ ...DEFAULT_KEY_LIGHT }],
+  castShadows: false,
+  shadowCatcher: true,
   shadows: true,
   floorY: -1.2,
   shadowOpacity: 0.5,
