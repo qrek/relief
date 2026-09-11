@@ -7,6 +7,7 @@ import type { CoverObject, PartInfo } from "../../types";
 import { useRuntime } from "../../runtime";
 import { loadMedia } from "../../lib/media";
 import { EffectChain, chainSize } from "../../lib/effectChain";
+import { hasKeys } from "../../lib/keyframes";
 import { effectById, isAnimated } from "../../presets/effects";
 import { sceneClock } from "../../lib/clock";
 
@@ -73,7 +74,7 @@ function CoverMedia({ obj }: { obj: CoverObject }) {
     () =>
       obj.effects.some((instance) => {
         if (!instance.enabled) return false;
-        if (instance.keys.length > 0) return true;
+        if (hasKeys(instance.keys)) return true;
         const def = effectById(instance.effectId);
         return def ? isAnimated(def, instance.params) : false;
       }),

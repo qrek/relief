@@ -15,10 +15,13 @@ import { EffectsPanel } from "./panels/EffectsPanel";
 import { StagingPanel } from "./panels/StagingPanel";
 import { ExportPanel } from "./panels/ExportPanel";
 import { LookPanel } from "./panels/LookPanel";
+import { Timeline } from "./panels/Timeline";
+import { ALL_TRANSFORM_CHANNELS } from "../lib/keyframes";
 
 export default function Editor() {
   const activePanel = useEditor((s) => s.activePanel);
   const setActivePanel = useEditor((s) => s.setActivePanel);
+  const timelineOpen = useEditor((s) => s.timelineOpen);
   const selected = useSelectedObject();
 
   useKeyboardShortcuts();
@@ -49,11 +52,14 @@ export default function Editor() {
       <TopBar />
       <div className="flex min-h-0 flex-1">
         <ToolRail />
-        <div className="relative min-w-0 flex-1">
-          <Viewport />
-          <div className="absolute left-3 top-3 w-56 rounded-lg border border-white/10 bg-neutral-900/90 backdrop-blur">
-            <LayersPanel />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="relative min-h-0 flex-1">
+            <Viewport />
+            <div className="absolute left-3 top-3 w-56 rounded-lg border border-white/10 bg-neutral-900/90 backdrop-blur">
+              <LayersPanel />
+            </div>
           </div>
+          {timelineOpen && <Timeline />}
         </div>
         <aside className="flex w-80 flex-col border-l border-white/5 bg-neutral-900">
           <nav className="flex border-b border-white/5">
@@ -214,7 +220,7 @@ function useKeyboardShortcuts() {
           break;
         case "k":
         case "K":
-          if (s.selectedId) s.addObjectKey(s.selectedId, sceneClock.clipTime);
+          if (s.selectedId) s.toggleKeys({ kind: "object", id: s.selectedId, channels: ALL_TRANSFORM_CHANNELS }, sceneClock.clipTime);
           break;
         case "1":
           s.setActivePanel("object");

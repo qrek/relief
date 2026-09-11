@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { sceneClock } from "./clock";
-import { sampleParams } from "./keyframes";
+import { hasKeys, sampleParams } from "./keyframes";
 import { GLSL_PREAMBLE, effectById, type EffectDef } from "../presets/effects";
 import { TAU } from "./clock";
 import type { EffectInstance } from "../types";
@@ -363,7 +363,7 @@ export class EffectChain {
       const def = effectById(instance.effectId)!;
 
       // A keyed effect reads its numbers off its keys at this moment of the clip.
-      const params = instance.keys?.length ? sampleParams(instance.keys, sceneClock.clipTime, instance.params) : instance.params;
+      const params = hasKeys(instance.keys) ? sampleParams(instance.keys, sceneClock.clipTime, instance.params) : instance.params;
 
       // Bloom is not one pass but a pyramid, so it takes the slot itself.
       if (def.id === "bloom") {

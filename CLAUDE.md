@@ -114,25 +114,37 @@ périodique en `uTime` de période `TAU`. Pour le bruit, on parcourt un cercle
 
 Le mouvement s'applique sur un groupe interne, pas sur le groupe transformé par le gizmo.
 
-## Keyframes
+## Keyframes et timeline
 Le projet porte un **clip** (`project.clip.duration`, 4 s par défaut) qui boucle ; l'horloge
-expose `clipTime` (le temps enroulé sur cette durée), `playing`, `seek`, `pause`. Un objet a des
-`keys` de transform, un effet des `keys` de paramètres numériques ; `lib/keyframes.ts` les
-échantillonne (interpolation par composante, angles par le plus court chemin, quatre eases, la
-première clé tient avant elle et la dernière après). Le mouvement en boucle (Motion) joue
-par-dessus, sur son groupe interne.
+expose `clipTime` (le temps enroulé sur cette durée), `playing`, `seek`, `pause`. Les clés sont
+**par canal** : `keys: KeyTracks` est un dictionnaire `canal → Key[]` (`{ id, t, v, ease }`, trié
+par temps), avec `position.x` … `scale.z` sur un objet et la clé du paramètre sur un effet. Un canal
+sans clé est absent et suit la valeur ordinaire. `lib/keyframes.ts` échantillonne (angles par le
+plus court chemin, quatre eases, la première clé tient avant elle et la dernière après), et
+`normalizeTracks` convertit la première forme (une clé pour tout le transform) en canaux.
 
-La règle d'usage est celle d'un auto-key : **dès qu'un objet a une clé, il est là où ses clés le
-disent**, et le déplacer (gizmo ou champs) écrit la clé au temps courant. Même chose pour un
-curseur d'effet keyé. Sans clé, rien ne change. Le gizmo lève `runtime.dragging` pendant la prise,
-pour que l'échantillonnage ne se batte pas avec la main. « Close loop » copie la première clé à la
-fin du clip. Espace joue et met en pause, K ajoute une clé sur la sélection.
+**Poser une clé** se fait à côté de la valeur : `KeyDiamond` dans `ui.tsx`, porté par `Row`,
+donc par `Slider` et `Vec3Field` (`keyState`, `onKey`). Le losange est creux sans clé, cerclé
+d'accent quand le canal est animé, plein quand une clé est au temps courant ; cliquer pose la
+clé à ce temps (ou la retire si elle y est). Un `Vec3Field` pose ses trois canaux d'un coup. Une
+fois un canal keyé, **changer la valeur écrit la clé au temps courant** (auto-key), au gizmo
+comme au champ. K pose les neuf canaux du transform de la sélection. La première clé ouvre la
+timeline.
 
-Les panneaux affichent la valeur échantillonnée au temps courant (transform, paramètres), pas la
-valeur de base : `useClockTick` échantillonne l'horloge quelques fois par seconde sans en faire
-un état React. Le transport (lecture, curseur, durée) est en bas à gauche du viewport, avec les
-clés de la sélection marquées sous le curseur. Un clip keyé est une période de plus pour la
-suggestion de durée de boucle vidéo.
+**La timeline** (`panels/Timeline.tsx`, sous le viewport, `timelineOpen` dans le store) liste
+tout ce qui est keyé : une ligne de groupe par objet ou par effet (« Halftone · Look »), une ligne
+par vecteur (Position, Rotation, Scale) ou par paramètre. Un losange par instant distinct, donc un
+seul pour les trois canaux d'un vecteur. Cliquer un losange va à ce temps ; le glisser déplace les
+clés de la ligne (`moveKeys`, coalescé) ; Suppr retire les clés sélectionnées (le gestionnaire du
+panneau arrête la propagation, sinon le raccourci global supprimerait l'objet). L'en-tête porte
+lecture, temps, durée du clip, et pour la ligne sélectionnée l'ease et « Close loop » (copie la
+première clé à la fin). Les lignes sont adressées par `TrackRef` (objet + canaux, ou propriétaire +
+instance + canaux) ; `withTrack` dans le store est le seul chemin vers leurs clés.
+
+Les panneaux affichent la valeur échantillonnée au temps courant, pas la valeur de base :
+`useClockTick` échantillonne l'horloge quelques fois par seconde sans en faire un état React. Le
+gizmo lève `runtime.dragging` pendant la prise, pour que l'échantillonnage ne se batte pas avec
+la main. Un clip keyé est une période de plus pour la suggestion de durée de boucle vidéo.
 
 ## Templates et scènes enregistrées
 Le bouton Scenes ouvre deux listes. En haut, les **templates** de `presets/templates.ts` : des

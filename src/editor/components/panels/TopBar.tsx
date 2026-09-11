@@ -101,7 +101,7 @@ export function TopBar() {
               ["Frame the selection", "Shift + F"],
               ["Camera view on / off", "0"],
               ["Play / pause the clip", "Space"],
-              ["Add a key on the selection", "K"],
+              ["Key the selection's whole transform", "K"],
               ["Pick one layer of an object", "Shift + click"],
               ["Delete selection", "Del"],
               ["Duplicate", "Ctrl + D"],

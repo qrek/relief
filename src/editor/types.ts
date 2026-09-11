@@ -61,11 +61,14 @@ export type MotionPreset = "none" | "spin" | "tumble" | "float" | "orbit" | "swi
 /** How a value moves from one key to the next. */
 export type Ease = "linear" | "smooth" | "in" | "out";
 
-/** Where the object is at a moment of the clip. */
-export type TransformKey = { id: string; t: number; transform: Transform; ease: Ease };
+/** One value at one moment of the clip. */
+export type Key = { id: string; t: number; v: number; ease: Ease };
 
-/** What an effect's numbers are at a moment of the clip. */
-export type ParamKey = { id: string; t: number; params: Record<string, number>; ease: Ease };
+/**
+ * Keys per animated channel, sorted by time: "position.x" on an object,
+ * "scale" on an effect. A channel nobody keyed is simply absent.
+ */
+export type KeyTracks = Record<string, Key[]>;
 
 /** Looping movement applied on top of an object's transform. */
 export type Motion = {
@@ -99,11 +102,11 @@ type BaseObject = {
   parts: Record<string, PartMaterial>;
   motion: Motion;
   /**
-   * Keyframes on the transform, sorted by time. With one or more keys the
-   * object is wherever its keys say at the clip's current time, and moving it
-   * writes the key at that time. The looping motion plays on top.
+   * Keyed transform channels. A keyed channel is wherever its keys say at the
+   * clip's current time, and changing it writes the key at that time; the
+   * other channels follow the plain transform. The looping motion plays on top.
    */
-  keys: TransformKey[];
+  keys: KeyTracks;
 };
 
 export type TextObject = BaseObject &
@@ -150,8 +153,8 @@ export type EffectInstance = {
   enabled: boolean;
   params: Record<string, number>;
   colors: Record<string, string>;
-  /** Keyframes on the numeric parameters, sorted by time. */
-  keys: ParamKey[];
+  /** Keyed numeric parameters, by parameter key. */
+  keys: KeyTracks;
 };
 
 export type CoverSource = {

@@ -3,8 +3,8 @@
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls, TransformControls } from "@react-three/drei";
-import { Columns2, Grid3x3, Orbit, Pause, Play, Video } from "lucide-react";
-import { sampleTransform } from "../lib/keyframes";
+import { Columns2, Film, Grid3x3, Orbit, Pause, Play, Video } from "lucide-react";
+import { hasKeys, sampleTransform } from "../lib/keyframes";
 import { useClockTick } from "./useClockTick";
 import { splitLayout } from "../lib/viewLayout";
 import * as THREE from "three";
@@ -135,17 +135,13 @@ export function Viewport() {
   );
 }
 
-/**
- * Play, pause and scrub the clip. The keys of the selection are marked under
- * the scrubber. The clip's length is typed in on the right.
- */
+/** Play, pause, the time, and the way to the timeline. */
 function Transport() {
-  const duration = useEditor((s) => s.project.clip.duration);
-  const setClipDuration = useEditor((s) => s.setClipDuration);
-  const keys = useEditor((s) => s.project.objects.find((o) => o.id === s.selectedId)?.keys ?? EMPTY_KEYS);
+  const timelineOpen = useEditor((s) => s.timelineOpen);
+  const setTimelineOpen = useEditor((s) => s.setTimelineOpen);
   const { time, playing } = useClockTick(20);
   return (
-    <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-neutral-900/90 px-2 py-1 text-xs text-neutral-300 ring-1 ring-white/10 backdrop-blur">
+    <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-neutral-900/90 px-2 py-1 text-xs text-neutral-300 ring-1 ring-white/10 backdrop-blur">
       <button
         type="button"
         onClick={() => sceneClock.toggle()}
@@ -154,44 +150,21 @@ function Transport() {
       >
         {playing ? <Pause size={13} strokeWidth={1.75} /> : <Play size={13} strokeWidth={1.75} />}
       </button>
-      <div className="relative w-40">
-        <input
-          type="range"
-          min={0}
-          max={duration}
-          step={0.01}
-          value={Math.min(duration, time)}
-          onChange={(e) => sceneClock.seek(Number(e.target.value))}
-          onPointerDown={() => sceneClock.pause()}
-          title="Where in the clip the scene is"
-          className="w-full accent-[var(--accent)]"
-        />
-        {keys.map((k) => (
-          <span
-            key={k.id}
-            className="pointer-events-none absolute -bottom-0.5 h-1 w-1 -translate-x-1/2 rotate-45 bg-[var(--accent)]"
-            style={{ left: `${(Math.min(duration, k.t) / duration) * 100}%` }}
-          />
-        ))}
-      </div>
-      <span className="tabular-nums text-neutral-400">{time.toFixed(2)} s</span>
-      <span className="text-neutral-600">/</span>
-      <input
-        type="number"
-        min={0.5}
-        max={60}
-        step={0.5}
-        value={duration}
-        onChange={(e) => setClipDuration(Number(e.target.value) || duration)}
-        title="Length of the clip in seconds"
-        className="w-10 rounded bg-transparent px-1 text-right tabular-nums text-neutral-300 outline-none hover:bg-white/5 focus:bg-white/5"
-      />
-      <span className="text-neutral-500">s</span>
+      <span className="w-14 tabular-nums text-neutral-400">{time.toFixed(2)} s</span>
+      <button
+        type="button"
+        onClick={() => setTimelineOpen(!timelineOpen)}
+        title={timelineOpen ? "Hide the timeline" : "Show the timeline: keys, playhead and the clip's length"}
+        className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition ${
+          timelineOpen ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-white/10 text-neutral-400 hover:bg-white/20"
+        }`}
+      >
+        <Film size={12} strokeWidth={1.75} />
+        Timeline
+      </button>
     </div>
   );
 }
-
-const EMPTY_KEYS: never[] = [];
 
 /** Tells the user the next click sets focus, and gives them a way out. */
 function FocusPickerHint() {
@@ -751,7 +724,7 @@ function ObjectNode({ obj }: { obj: SceneObject }) {
 
   // A keyed object is placed by its keys every frame, except while the hand is
   // on the gizmo: then the hand leads, and the key is written on release.
-  const keyed = obj.keys.length > 0;
+  const keyed = hasKeys(obj.keys);
   useFrame(() => {
     const g = ref.current;
     if (!g || !keyed || useRuntime.getState().dragging) return;

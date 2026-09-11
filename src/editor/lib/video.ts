@@ -18,6 +18,7 @@ import { useRuntime } from "../runtime";
 import { sceneClock } from "./clock";
 import { hideEditorHelpers } from "./export";
 import { motionPeriod } from "../presets/motion";
+import { hasKeys } from "./keyframes";
 import type { Project } from "../types";
 
 export type VideoFormat = "mp4" | "webm";
@@ -161,8 +162,8 @@ function scenePeriods(project: Project): number[] {
   }
   // Keyframes live in the clip, so the clip is a cycle of its own.
   const keyed =
-    project.objects.some((o) => o.keys.length > 0 || (o.kind === "cover" && o.effects.some((e) => e.keys.length > 0))) ||
-    project.staging.look.some((e) => e.keys.length > 0);
+    project.objects.some((o) => hasKeys(o.keys) || (o.kind === "cover" && o.effects.some((e) => hasKeys(e.keys)))) ||
+    project.staging.look.some((e) => hasKeys(e.keys));
   if (keyed) periods.push(project.clip.duration);
   return periods;
 }

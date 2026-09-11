@@ -12,8 +12,8 @@ import { MediaLibrary } from "./MediaLibrary";
 import type { CoverObject, LabelObject, ModelObject, Motion, ShapeObject, TextObject } from "../../types";
 import { Button, ColorField, IconButton, Row, Section, SelectField, Slider, TextField, Toggle, Vec3Field } from "../ui";
 import { Copy, Trash2 } from "lucide-react";
-import { KeyframesSection } from "./Keyframes";
-import { sampleTransform } from "../../lib/keyframes";
+import { TRANSFORM_CHANNELS, hasKeys, keyStateOf, sampleTransform } from "../../lib/keyframes";
+import { sceneClock } from "../../lib/clock";
 import { useClockTick } from "../useClockTick";
 
 export function ObjectPanel() {
@@ -24,10 +24,7 @@ export function ObjectPanel() {
   const duplicateObject = useEditor((s) => s.duplicateObject);
   const toggleLock = useEditor((s) => s.toggleLock);
   const error = useRuntime((s) => (obj ? s.errors[obj.id] : undefined));
-  const addObjectKey = useEditor((s) => s.addObjectKey);
-  const removeObjectKey = useEditor((s) => s.removeObjectKey);
-  const setObjectKeysEase = useEditor((s) => s.setObjectKeysEase);
-  const closeObjectLoop = useEditor((s) => s.closeObjectLoop);
+  const toggleKeys = useEditor((s) => s.toggleKeys);
   const tick = useClockTick();
 
   if (!obj) {
@@ -42,7 +39,11 @@ export function ObjectPanel() {
   }
 
   // A keyed object shows where its keys put it right now, not its stored base.
-  const t = obj.keys.length ? sampleTransform(obj.keys, tick.time, obj.transform) : obj.transform;
+  const t = hasKeys(obj.keys) ? sampleTransform(obj.keys, tick.time, obj.transform) : obj.transform;
+  const keying = (vector: keyof typeof TRANSFORM_CHANNELS) => ({
+    keyState: keyStateOf(obj.keys, TRANSFORM_CHANNELS[vector], tick.time),
+    onKey: () => toggleKeys({ kind: "object", id: obj.id, channels: TRANSFORM_CHANNELS[vector] }, sceneClock.clipTime),
+  });
   return (
     <>
       {error && (
@@ -83,21 +84,13 @@ export function ObjectPanel() {
         </Section>
       )}
 
-      <KeyframesSection
-        keys={obj.keys}
-        what="move it with the gizmo or the fields"
-        onAdd={(at) => addObjectKey(obj.id, at)}
-        onRemove={(keyId) => removeObjectKey(obj.id, keyId)}
-        onEase={(ease) => setObjectKeysEase(obj.id, ease)}
-        onCloseLoop={() => closeObjectLoop(obj.id)}
-      />
-
       <MotionSection objectId={obj.id} motion={obj.motion} />
 
       <Section title="Transform">
-        <Vec3Field label="Position" value={t.position} onChange={(position) => setTransform(obj.id, { ...t, position })} />
+        <Vec3Field label="Position" value={t.position} onChange={(position) => setTransform(obj.id, { ...t, position })} {...keying("position")} />
         <Vec3Field
           label="Rotation"
+          {...keying("rotation")}
           value={t.rotation.map((r) => THREE.MathUtils.radToDeg(r)) as [number, number, number]}
           step={1}
           format={(v) => String(Math.round(v))}
@@ -108,7 +101,7 @@ export function ObjectPanel() {
             })
           }
         />
-        <Vec3Field label="Scale" value={t.scale} onChange={(scale) => setTransform(obj.id, { ...t, scale })} />
+        <Vec3Field label="Scale" value={t.scale} onChange={(scale) => setTransform(obj.id, { ...t, scale })} {...keying("scale")} />
         <Row label="">
           <Button
             variant="ghost"

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useEditor, useSelectedObject } from "../../store";
 import { effectThumbnail, subscribeEffectThumbnail } from "../../lib/effectThumbs";
-import { KeyframesSection } from "./Keyframes";
-import { sampleParams } from "../../lib/keyframes";
+import { hasKeys, keyStateOf, sampleParams } from "../../lib/keyframes";
+import { sceneClock } from "../../lib/clock";
 import { useClockTick } from "../useClockTick";
 import {
   EFFECTS,
@@ -192,13 +192,10 @@ function EffectCard({
   const setEffectParam = useEditor((s) => s.setEffectParam);
   const setEffectColor = useEditor((s) => s.setEffectColor);
   const resetEffect = useEditor((s) => s.resetEffect);
-  const addEffectKey = useEditor((s) => s.addEffectKey);
-  const removeEffectKey = useEditor((s) => s.removeEffectKey);
-  const setEffectKeysEase = useEditor((s) => s.setEffectKeysEase);
-  const closeEffectLoop = useEditor((s) => s.closeEffectLoop);
+  const toggleKeys = useEditor((s) => s.toggleKeys);
   const tick = useClockTick();
   // A keyed effect shows the numbers its keys give right now.
-  const shown = instance.keys.length ? sampleParams(instance.keys, tick.time, instance.params) : instance.params;
+  const shown = hasKeys(instance.keys) ? sampleParams(instance.keys, tick.time, instance.params) : instance.params;
 
   const def = effectById(instance.effectId);
   if (!def) {
@@ -236,6 +233,8 @@ function EffectCard({
               key={p.key}
               label={p.label}
               value={shown[p.key] ?? p.default}
+              keyState={keyStateOf(instance.keys, [p.key], tick.time)}
+              onKey={() => toggleKeys({ kind: "effect", ownerId, instanceId: instance.id, channels: [p.key] }, sceneClock.clipTime)}
               min={p.min}
               max={p.max}
               step={p.step}
@@ -251,15 +250,6 @@ function EffectCard({
               onChange={(v) => setEffectColor(ownerId, instance.id, c.key, v)}
             />
           ))}
-          <KeyframesSection
-            compact
-            keys={instance.keys}
-            what="move a slider"
-            onAdd={(at) => addEffectKey(ownerId, instance.id, at)}
-            onRemove={(keyId) => removeEffectKey(ownerId, instance.id, keyId)}
-            onEase={(ease) => setEffectKeysEase(ownerId, instance.id, ease)}
-            onCloseLoop={() => closeEffectLoop(ownerId, instance.id)}
-          />
         </div>
       </div>
     </Section>

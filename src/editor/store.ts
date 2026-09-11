@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
+  KeyTracks,
   Ease,
   CoverObject,
   CoverSource,
@@ -27,7 +28,15 @@ import { useRuntime } from "./runtime";
 import { defaultParams, objectPresetById } from "./presets/objects";
 import { DEFAULT_MOTION } from "./presets/motion";
 import { sceneClock } from "./lib/clock";
-import { sampleParams, sampleTransform, upsertKey } from "./lib/keyframes";
+import {
+  ALL_TRANSFORM_CHANNELS,
+  keyAt,
+  normalizeTracks,
+  sampleChannel,
+  transformValue,
+  upsertKey,
+  type TrackRef,
+} from "./lib/keyframes";
 import {
   MAX_EFFECTS,
   defaultEffectColors,
@@ -58,7 +67,7 @@ const HISTORY_LIMIT = 60;
 const COALESCE_MS = 400;
 // Bump whenever an object or project field is added, so normalizeProject runs on
 // projects already saved in the browser.
-const PERSIST_VERSION = 11;
+const PERSIST_VERSION = 12;
 
 export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -83,7 +92,7 @@ export function createTextObject(partial: Partial<TextObject> = {}): TextObject 
     materialPresetId: "chrome",
     parts: {},
     motion: { ...DEFAULT_MOTION },
-    keys: [],
+    keys: {},
     text: "Studio",
     fontId: DEFAULT_FONT_ID,
     size: 0.8,
@@ -112,7 +121,7 @@ export function createShapeObject(svg: string, name: string, partial: Partial<Sh
     materialPresetId: "glossy-red",
     parts: {},
     motion: { ...DEFAULT_MOTION },
-    keys: [],
+    keys: {},
     svg,
     size: 2,
     depth: 0.5,
@@ -137,7 +146,7 @@ export function createModelObject(source: ModelSource, name: string, partial: Pa
     materialPresetId: "soft-clay",
     parts: {},
     motion: { ...DEFAULT_MOTION },
-    keys: [],
+    keys: {},
     source,
     size: 2.2,
     useSourceMaterials: source.type === "asset",
@@ -157,7 +166,7 @@ export function createLabelObject(partial: Partial<LabelObject> = {}): LabelObje
     materialPresetId: "matte-white",
     parts: {},
     motion: { ...DEFAULT_MOTION },
-    keys: [],
+    keys: {},
     text: "Headline",
     fontId: DEFAULT_FONT_ID,
     size: 0.09,
@@ -187,7 +196,7 @@ export function createCoverObject(source: CoverSource | null, name: string, part
     materialPresetId: "matte-white",
     parts: {},
     motion: { ...DEFAULT_MOTION },
-    keys: [],
+    keys: {},
     source,
     effects: [],
     size: 4,
@@ -206,7 +215,7 @@ export function createEffectInstance(effectId: string): EffectInstance {
     enabled: true,
     params: defaultEffectParams(def),
     colors: defaultEffectColors(def),
-    keys: [],
+    keys: {},
   };
 }
 
@@ -237,6 +246,22 @@ function withEffects(p: Project, ownerId: string, fn: (list: EffectInstance[]) =
   }
   const owner = p.objects.find((o) => o.id === ownerId);
   if (owner?.kind === "cover") fn(owner.effects);
+}
+
+/**
+ * Reaches the keys a timeline row points at, on an object or on an effect,
+ * with a reader for the channel's plain value when a key has to be made.
+ */
+function withTrack(p: Project, track: TrackRef, fn: (tracks: KeyTracks, base: (channel: string) => number) => void) {
+  if (track.kind === "object") {
+    const o = p.objects.find((x) => x.id === track.id);
+    if (o) fn(o.keys, (c) => transformValue(o.transform, c));
+    return;
+  }
+  withEffects(p, track.ownerId, (list) => {
+    const e = list.find((x) => x.id === track.instanceId);
+    if (e) fn(e.keys, (c) => e.params[c] ?? 0);
+  });
 }
 
 type LegacyStaging = Partial<Staging> & {
@@ -287,7 +312,7 @@ export function normalizeProject(input: unknown): Project {
         ...o,
         locked: o.locked ?? false,
         motion: { ...DEFAULT_MOTION, ...(o.motion ?? {}) },
-        keys: Array.isArray(o.keys) ? o.keys : [],
+        keys: normalizeTracks(o.keys),
         material: {
           ...DEFAULT_MATERIAL,
           ...(o.material ?? {}),
@@ -331,9 +356,9 @@ export function normalizeProject(input: unknown): Project {
   };
 }
 
-/** An effect saved before keyframes existed has none. */
+/** An effect saved before keyframes existed has none; one saved with the first form is converted. */
 function withKeys(e: EffectInstance): EffectInstance {
-  return { ...e, keys: Array.isArray(e.keys) ? e.keys : [] };
+  return { ...e, keys: normalizeTracks(e.keys) };
 }
 
 function withLookKeys(staging: Staging): Staging {
@@ -392,16 +417,20 @@ type EditorState = {
   setModelParam: (id: string, key: string, value: number, coalesce?: boolean) => void;
   setTransform: (id: string, transform: Transform) => void;
   setClipDuration: (seconds: number) => void;
-  /** Writes a key at that moment of the clip, from where the object is at that moment. */
-  addObjectKey: (id: string, t: number) => void;
-  removeObjectKey: (id: string, keyId: string) => void;
-  setObjectKeysEase: (id: string, ease: Ease) => void;
-  /** Copies the first key to the end of the clip, so the loop closes. */
-  closeObjectLoop: (id: string) => void;
-  addEffectKey: (ownerId: string, instanceId: string, t: number) => void;
-  removeEffectKey: (ownerId: string, instanceId: string, keyId: string) => void;
-  setEffectKeysEase: (ownerId: string, instanceId: string, ease: Ease) => void;
-  closeEffectLoop: (ownerId: string, instanceId: string) => void;
+  /** Shows the timeline under the viewport. */
+  timelineOpen: boolean;
+  setTimelineOpen: (open: boolean) => void;
+  /**
+   * Keys the channels at that moment, at their current values; if every one
+   * of them already has a key there, removes those keys instead.
+   */
+  toggleKeys: (track: TrackRef, t: number) => void;
+  /** Moves every key sitting at `from` on the track to `to`. Coalesced, for dragging. */
+  moveKeys: (track: TrackRef, from: number, to: number) => void;
+  removeKeys: (track: TrackRef, t: number) => void;
+  setTrackEase: (track: TrackRef, ease: Ease) => void;
+  /** Copies the track's first key to the end of the clip, so the loop closes. */
+  closeLoop: (track: TrackRef) => void;
   setMotion: (id: string, patch: Partial<Motion>, coalesce?: boolean) => void;
 
   addEffect: (id: string, effectId: string) => void;
@@ -537,10 +566,13 @@ export const useEditor = create<EditorState>()(
           mutate((p) =>
             patchObject(p, id, (o) => {
               o.transform = transform;
-              // A keyed object is wherever its keys say, so moving it means
-              // writing the key at this moment of the clip.
-              if (o.keys.length) {
-                o.keys = upsertKey(o.keys, { t: sceneClock.clipTime, transform, ease: o.keys[0].ease }, newId);
+              // A keyed channel is wherever its keys say, so moving the object
+              // means writing that channel's key at this moment of the clip.
+              for (const channel of ALL_TRANSFORM_CHANNELS) {
+                const keys = o.keys[channel];
+                if (keys?.length) {
+                  o.keys[channel] = upsertKey(keys, { t: sceneClock.clipTime, v: transformValue(transform, channel), ease: keys[0].ease }, newId);
+                }
               }
             }),
           ),
@@ -548,59 +580,69 @@ export const useEditor = create<EditorState>()(
           mutate((p) => {
             p.clip = { duration: Math.min(60, Math.max(0.5, seconds)) };
           }),
-        addObjectKey: (id, t) =>
+        timelineOpen: false,
+        setTimelineOpen: (timelineOpen) => set({ timelineOpen }),
+        toggleKeys: (track, t) => {
           mutate((p) =>
-            patchObject(p, id, (o) => {
-              const transform = o.keys.length ? sampleTransform(o.keys, t, o.transform) : o.transform;
-              o.keys = upsertKey(o.keys, { t, transform, ease: o.keys[0]?.ease ?? "smooth" }, newId);
+            withTrack(p, track, (tracks, base) => {
+              const all = track.channels.every((c) => keyAt(tracks[c], t));
+              for (const c of track.channels) {
+                if (all) {
+                  const k = keyAt(tracks[c], t);
+                  tracks[c] = (tracks[c] ?? []).filter((x) => x !== k);
+                  if (tracks[c].length === 0) delete tracks[c];
+                } else {
+                  const keys = tracks[c];
+                  const v = sampleChannel(keys, t, base(c), c.startsWith("rotation"));
+                  tracks[c] = upsertKey(keys, { t, v, ease: keys?.[0]?.ease ?? "smooth" }, newId);
+                }
+              }
+            }),
+          );
+          // The first key opens the timeline, where the rest of the work happens.
+          set({ timelineOpen: true });
+        },
+        moveKeys: (track, from, to) =>
+          mutate(
+            (p) =>
+              withTrack(p, track, (tracks) => {
+                const at = Math.min(p.clip.duration, Math.max(0, to));
+                for (const c of track.channels) {
+                  const k = keyAt(tracks[c], from);
+                  if (!k) continue;
+                  tracks[c] = upsertKey(
+                    (tracks[c] ?? []).filter((x) => x !== k),
+                    { t: at, v: k.v, ease: k.ease },
+                    () => k.id,
+                  );
+                }
+              }),
+            true,
+          ),
+        removeKeys: (track, t) =>
+          mutate((p) =>
+            withTrack(p, track, (tracks) => {
+              for (const c of track.channels) {
+                const k = keyAt(tracks[c], t);
+                if (!k) continue;
+                tracks[c] = (tracks[c] ?? []).filter((x) => x !== k);
+                if (tracks[c].length === 0) delete tracks[c];
+              }
             }),
           ),
-        removeObjectKey: (id, keyId) =>
+        setTrackEase: (track, ease) =>
           mutate((p) =>
-            patchObject(p, id, (o) => {
-              o.keys = o.keys.filter((k) => k.id !== keyId);
-              // With the keys gone the object stays where it was last seen.
-              if (o.keys.length === 0) o.transform = sampleTransform([], 0, o.transform);
+            withTrack(p, track, (tracks) => {
+              for (const c of track.channels) if (tracks[c]) tracks[c] = tracks[c].map((k) => ({ ...k, ease }));
             }),
           ),
-        setObjectKeysEase: (id, ease) =>
-          mutate((p) => patchObject(p, id, (o) => (o.keys = o.keys.map((k) => ({ ...k, ease }))))),
-        closeObjectLoop: (id) =>
+        closeLoop: (track) =>
           mutate((p) =>
-            patchObject(p, id, (o) => {
-              const first = o.keys[0];
-              if (first) o.keys = upsertKey(o.keys, { t: p.clip.duration, transform: first.transform, ease: first.ease }, newId);
-            }),
-          ),
-        addEffectKey: (ownerId, instanceId, t) =>
-          mutate((p) =>
-            withEffects(p, ownerId, (list) => {
-              const e = list.find((x) => x.id === instanceId);
-              if (!e) return;
-              const params = e.keys.length ? sampleParams(e.keys, t, e.params) : { ...e.params };
-              e.keys = upsertKey(e.keys, { t, params, ease: e.keys[0]?.ease ?? "smooth" }, newId);
-            }),
-          ),
-        removeEffectKey: (ownerId, instanceId, keyId) =>
-          mutate((p) =>
-            withEffects(p, ownerId, (list) => {
-              const e = list.find((x) => x.id === instanceId);
-              if (e) e.keys = e.keys.filter((k) => k.id !== keyId);
-            }),
-          ),
-        setEffectKeysEase: (ownerId, instanceId, ease) =>
-          mutate((p) =>
-            withEffects(p, ownerId, (list) => {
-              const e = list.find((x) => x.id === instanceId);
-              if (e) e.keys = e.keys.map((k) => ({ ...k, ease }));
-            }),
-          ),
-        closeEffectLoop: (ownerId, instanceId) =>
-          mutate((p) =>
-            withEffects(p, ownerId, (list) => {
-              const e = list.find((x) => x.id === instanceId);
-              const first = e?.keys[0];
-              if (e && first) e.keys = upsertKey(e.keys, { t: p.clip.duration, params: first.params, ease: first.ease }, newId);
+            withTrack(p, track, (tracks) => {
+              for (const c of track.channels) {
+                const first = tracks[c]?.[0];
+                if (first) tracks[c] = upsertKey(tracks[c], { t: p.clip.duration, v: first.v, ease: first.ease }, newId);
+              }
             }),
           ),
         setMotion: (id, patch, coalesce = true) =>
@@ -648,10 +690,10 @@ export const useEditor = create<EditorState>()(
                 const e = list.find((x) => x.id === instanceId);
                 if (!e) return;
                 e.params = { ...e.params, [key]: value };
-                // A keyed effect reads its keys, so a slider writes the key at this moment.
-                if (e.keys.length) {
-                  const at = sampleParams(e.keys, sceneClock.clipTime, e.params);
-                  e.keys = upsertKey(e.keys, { t: sceneClock.clipTime, params: { ...at, [key]: value }, ease: e.keys[0].ease }, newId);
+                // A keyed parameter reads its keys, so its slider writes the key at this moment.
+                const keys = e.keys[key];
+                if (keys?.length) {
+                  e.keys[key] = upsertKey(keys, { t: sceneClock.clipTime, v: value, ease: keys[0].ease }, newId);
                 }
               }),
             coalesce,

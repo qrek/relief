@@ -2,6 +2,7 @@
 
 import { type ReactNode, useState } from "react";
 import type { LucideIcon } from "lucide-react";
+import type { KeyState } from "../lib/keyframes";
 
 /**
  * A square button that is only an icon. The title is not optional: an icon
@@ -70,10 +71,55 @@ export function Section({
   );
 }
 
-export function Row({ label, children }: { label: string; children: ReactNode }) {
+/**
+ * The keying diamond beside a value: hollow when the value is not animated,
+ * outlined in the accent when it has keys elsewhere in the clip, filled when
+ * a key sits at the current time. Clicking keys the value here, or unkeys it.
+ */
+export function KeyDiamond({ state, onClick }: { state: KeyState; onClick: () => void }) {
+  const title =
+    state === "here" ? "Keyed here. Click to remove this key." : state === "keyed" ? "Animated. Click to key it at this time." : "Key this value at the current time";
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
+      className="flex h-4 w-4 shrink-0 items-center justify-center rounded hover:bg-white/10"
+    >
+      <span
+        className={`block h-2 w-2 rotate-45 rounded-[1px] ${
+          state === "here"
+            ? "bg-[var(--accent)]"
+            : state === "keyed"
+              ? "bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]"
+              : "ring-1 ring-white/25 hover:ring-white/60"
+        }`}
+      />
+    </button>
+  );
+}
+
+export function Row({
+  label,
+  children,
+  keyState,
+  onKey,
+}: {
+  label: string;
+  children: ReactNode;
+  /** Present on a value that can be keyed in the timeline. */
+  keyState?: KeyState;
+  onKey?: () => void;
+}) {
   return (
     <label className="grid grid-cols-[88px_1fr] items-center gap-2 text-xs text-neutral-300">
-      <span className="truncate text-neutral-400">{label}</span>
+      <span className="flex min-w-0 items-center gap-1 text-neutral-400">
+        {keyState && onKey && <KeyDiamond state={keyState} onClick={onKey} />}
+        <span className="truncate">{label}</span>
+      </span>
       {children}
     </label>
   );
@@ -88,6 +134,8 @@ export function Slider({
   onChange,
   format,
   logarithmic = false,
+  keyState,
+  onKey,
 }: {
   label: string;
   value: number;
@@ -99,6 +147,8 @@ export function Slider({
   /** Spreads the travel by ratio rather than by amount, for ranges like a focus
    *  distance where the useful detail sits at the near end. Needs min > 0. */
   logarithmic?: boolean;
+  keyState?: KeyState;
+  onKey?: () => void;
 }) {
   const usesLog = logarithmic && min > 0 && max > min;
   const toTrack = (v: number) =>
@@ -106,7 +156,7 @@ export function Slider({
   const fromTrack = (t: number) => (usesLog ? min * Math.pow(max / min, t) : t);
 
   return (
-    <Row label={label}>
+    <Row label={label} keyState={keyState} onKey={onKey}>
       <div className="flex items-center gap-2">
         <input
           type="range"
@@ -315,15 +365,19 @@ export function Vec3Field({
   onChange,
   step = 0.01,
   format,
+  keyState,
+  onKey,
 }: {
   label: string;
   value: [number, number, number];
   onChange: (v: [number, number, number]) => void;
   step?: number;
   format?: (v: number) => string;
+  keyState?: KeyState;
+  onKey?: () => void;
 }) {
   return (
-    <Row label={label}>
+    <Row label={label} keyState={keyState} onKey={onKey}>
       <div className="grid grid-cols-3 gap-1">
         {value.map((v, i) => (
           <NumberField
