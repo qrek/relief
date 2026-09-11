@@ -2,6 +2,10 @@
 
 import { useEditor } from "../../store";
 import { useRuntime } from "../../runtime";
+import { IconButton } from "../ui";
+import { ALargeSmall, Box, ChevronDown, ChevronUp, Eye, EyeOff, Image as ImageIcon, Lock, LockOpen, Shapes, Type, X } from "lucide-react";
+
+const KIND_ICON = { text: Type, shape: Shapes, model: Box, cover: ImageIcon, label: ALargeSmall } as const;
 
 export function LayersPanel() {
   const objects = useEditor((s) => s.project.objects);
@@ -25,7 +29,7 @@ export function LayersPanel() {
         {[...objects].reverse().map((o, idx) => {
           const active = o.id === selectedId;
           const parts = partsById[o.id] ?? [];
-          const icon = o.kind === "text" ? "T" : o.kind === "shape" ? "◆" : "⬢";
+          const Icon = KIND_ICON[o.kind];
           return (
             <li key={o.id}>
               <div
@@ -34,7 +38,7 @@ export function LayersPanel() {
                   active ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "text-neutral-300 hover:bg-white/5"
                 }`}
               >
-                <span className="w-4 text-center text-[10px] text-neutral-500">{icon}</span>
+                <Icon size={13} strokeWidth={1.75} className={`shrink-0 ${active ? "text-[var(--accent)]" : "text-neutral-500"}`} />
                 <span
                   className={`flex-1 truncate ${o.visible ? "" : "line-through opacity-50"} ${
                     o.locked ? "opacity-60" : ""
@@ -44,24 +48,11 @@ export function LayersPanel() {
                 </span>
                 {o.locked && <span className="text-[10px] text-neutral-500">freeze</span>}
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
-                  <IconButton title="Move up" disabled={idx === 0} onClick={() => moveObject(o.id, 1)}>
-                    ↑
-                  </IconButton>
-                  <IconButton title="Move down" disabled={idx === objects.length - 1} onClick={() => moveObject(o.id, -1)}>
-                    ↓
-                  </IconButton>
-                  <IconButton title={o.locked ? "Unfreeze" : "Freeze"} onClick={() => toggleLock(o.id)}>
-                    {o.locked ? "🔒" : "🔓"}
-                  </IconButton>
-                  <IconButton
-                    title={o.visible ? "Hide" : "Show"}
-                    onClick={() => updateObject(o.id, { visible: !o.visible }, false)}
-                  >
-                    {o.visible ? "●" : "○"}
-                  </IconButton>
-                  <IconButton title="Delete" onClick={() => removeObject(o.id)}>
-                    ×
-                  </IconButton>
+                  <IconButton icon={ChevronUp} title="Move up" disabled={idx === 0} onClick={() => moveObject(o.id, 1)} />
+                  <IconButton icon={ChevronDown} title="Move down" disabled={idx === objects.length - 1} onClick={() => moveObject(o.id, -1)} />
+                  <IconButton icon={o.locked ? Lock : LockOpen} title={o.locked ? "Unfreeze" : "Freeze"} onClick={() => toggleLock(o.id)} />
+                  <IconButton icon={o.visible ? Eye : EyeOff} title={o.visible ? "Hide" : "Show"} onClick={() => updateObject(o.id, { visible: !o.visible }, false)} />
+                  <IconButton icon={X} title="Delete" danger onClick={() => removeObject(o.id)} />
                 </div>
               </div>
 
@@ -90,32 +81,5 @@ export function LayersPanel() {
         {objects.length === 0 && <li className="px-2 py-2 text-[11px] text-neutral-600">Empty scene.</li>}
       </ul>
     </div>
-  );
-}
-
-function IconButton({
-  children,
-  onClick,
-  title,
-  disabled,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  title: string;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      disabled={disabled}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      className="h-5 w-5 rounded text-[11px] leading-none text-neutral-400 hover:bg-white/10 hover:text-white disabled:opacity-30"
-    >
-      {children}
-    </button>
   );
 }

@@ -1,6 +1,54 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
+import type { LucideIcon } from "lucide-react";
+
+/**
+ * A square button that is only an icon. The title is not optional: an icon
+ * with no name is a riddle, and the tooltip is where the word went.
+ */
+export function IconButton({
+  icon: Icon,
+  title,
+  onClick,
+  disabled,
+  active = false,
+  danger = false,
+  size = "sm",
+  className = "",
+}: {
+  icon: LucideIcon;
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  danger?: boolean;
+  size?: "sm" | "md";
+  className?: string;
+}) {
+  const box = size === "md" ? "h-7 w-7" : "h-5 w-5";
+  const glyph = size === "md" ? 15 : 13;
+  const tone = active
+    ? "bg-[var(--accent)] text-[var(--accent-ink)]"
+    : danger
+      ? "text-neutral-400 hover:bg-red-500/15 hover:text-red-300"
+      : "text-neutral-400 hover:bg-white/10 hover:text-white";
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className={`grid ${box} shrink-0 place-items-center rounded transition disabled:cursor-not-allowed disabled:opacity-30 ${tone} ${className}`}
+    >
+      <Icon size={glyph} strokeWidth={1.75} />
+    </button>
+  );
+}
 
 export function Section({
   title,

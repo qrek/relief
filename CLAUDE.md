@@ -37,6 +37,13 @@ résout lequel afficher. Deux refontes ont été essayées puis écartées par l
 pupitre caméra en bas, puis une disposition façon Figma) ; ne pas reproposer de refonte de
 structure sans qu'il la demande.
 
+Les icônes viennent de `lucide-react` (trait 1.75, 13 px dans les panneaux, 15 px dans la barre,
+18 px dans le rail), via `IconButton` de `ui.tsx`, dont le `title` est obligatoire : le mot part
+dans l'info-bulle, jamais nulle part. Une icône remplace un mot seulement là où le mot faisait
+déjà office de pictogramme (actions de ligne, annuler, fichier, outils du rail). Les onglets, les
+réglages nommés et les actions principales (Scenes, Export) gardent leur mot. Ne pas importer
+`Image` de lucide sous ce nom, la règle d'accessibilité le prend pour une balise img.
+
 Une seule couleur d'accent, `--accent` dans `globals.css` (vert acide pour l'instant), avec
 `--accent-ink` pour le texte posé dessus et `--accent-soft` / `--accent-edge` qui en dérivent.
 Elle signifie toujours « actif » ou « sélectionné ». Les surfaces restent en `white/5`, `white/10` :

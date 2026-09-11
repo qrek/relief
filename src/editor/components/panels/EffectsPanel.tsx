@@ -9,7 +9,8 @@ import {
   effectById,
 } from "../../presets/effects";
 import type { CoverObject, EffectInstance } from "../../types";
-import { Button, ColorField, Section, Slider } from "../ui";
+import { Button, ColorField, IconButton, Section, Slider } from "../ui";
+import { ChevronDown, ChevronUp, Eye, EyeOff, RotateCcw, X } from "lucide-react";
 
 export function EffectsPanel() {
   const obj = useSelectedObject();
@@ -169,28 +170,11 @@ function EffectCard({
       title={`${index + 1}. ${def.name}`}
       right={
         <div className="flex items-center gap-0.5">
-          <IconButton title="Move up" disabled={index === 0} onClick={() => moveEffect(ownerId, instance.id, -1)}>
-            ↑
-          </IconButton>
-          <IconButton
-            title="Move down"
-            disabled={index === count - 1}
-            onClick={() => moveEffect(ownerId, instance.id, 1)}
-          >
-            ↓
-          </IconButton>
-          <IconButton
-            title={instance.enabled ? "Mute" : "Unmute"}
-            onClick={() => toggleEffect(ownerId, instance.id)}
-          >
-            {instance.enabled ? "●" : "○"}
-          </IconButton>
-          <IconButton title="Reset" onClick={() => resetEffect(ownerId, instance.id)}>
-            ↺
-          </IconButton>
-          <IconButton title="Remove" onClick={() => removeEffect(ownerId, instance.id)}>
-            ×
-          </IconButton>
+          <IconButton icon={ChevronUp} title="Move up" disabled={index === 0} onClick={() => moveEffect(ownerId, instance.id, -1)} />
+          <IconButton icon={ChevronDown} title="Move down" disabled={index === count - 1} onClick={() => moveEffect(ownerId, instance.id, 1)} />
+          <IconButton icon={instance.enabled ? Eye : EyeOff} title={instance.enabled ? "Mute" : "Unmute"} onClick={() => toggleEffect(ownerId, instance.id)} />
+          <IconButton icon={RotateCcw} title="Reset" onClick={() => resetEffect(ownerId, instance.id)} />
+          <IconButton icon={X} title="Remove" danger onClick={() => removeEffect(ownerId, instance.id)} />
         </div>
       }
     >
@@ -219,29 +203,5 @@ function EffectCard({
         </div>
       </div>
     </Section>
-  );
-}
-
-function IconButton({
-  children,
-  onClick,
-  title,
-  disabled,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  title: string;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      disabled={disabled}
-      onClick={onClick}
-      className="h-5 w-5 rounded text-[11px] leading-none text-neutral-400 hover:bg-white/10 hover:text-white disabled:opacity-30"
-    >
-      {children}
-    </button>
   );
 }

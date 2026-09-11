@@ -6,6 +6,7 @@ import { TEMPLATES, type TemplateDef } from "../../presets/templates";
 import { assetUrl, deleteAsset, getTemplateData, listAssets, putTemplate, type AssetMeta } from "../../lib/assets";
 import { renderImage } from "../../lib/export";
 import { Button } from "../ui";
+import { X } from "lucide-react";
 
 type SavedScene = AssetMeta & { url: string };
 
@@ -134,9 +135,9 @@ export function SceneLibrary({ onClose }: { onClose: () => void }) {
                       await deleteAsset(scene.id);
                       refresh();
                     }}
-                    className="absolute right-3 top-3 rounded bg-black/70 px-1.5 text-neutral-400 opacity-0 hover:text-red-300 group-hover:opacity-100"
+                    className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded bg-black/70 text-neutral-400 opacity-0 hover:text-red-300 group-hover:opacity-100"
                   >
-                    ×
+                    <X size={13} strokeWidth={1.75} />
                   </button>
                 </div>
               ))}

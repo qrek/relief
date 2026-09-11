@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import { useEditor } from "../../store";
 import type { Project } from "../../types";
-import { Button } from "../ui";
+import { Button, IconButton } from "../ui";
+import { CircleHelp, FilePlus2, FolderOpen, LayoutGrid, Redo2, Save, Undo2 } from "lucide-react";
 import { SceneLibrary } from "./SceneLibrary";
 
 export function TopBar() {
@@ -42,32 +43,28 @@ export function TopBar() {
         onChange={(e) => renameProject(e.target.value)}
         className="w-48 rounded bg-transparent px-2 py-1 text-sm text-neutral-200 outline-none hover:bg-white/5 focus:bg-white/5"
       />
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-          Undo
-        </Button>
-        <Button variant="ghost" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
-          Redo
-        </Button>
+      <div className="flex items-center gap-0.5">
+        <IconButton icon={Undo2} size="md" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" />
+        <IconButton icon={Redo2} size="md" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" />
       </div>
       <div className="flex-1" />
-      <Button variant="ghost" onClick={() => setHelpOpen((v) => !v)} title="Keyboard shortcuts">
-        ?
-      </Button>
-      <Button variant="default" onClick={() => setScenesOpen(true)} title="Your saved scenes">
+      <Button variant="default" onClick={() => setScenesOpen(true)} title="Templates and your saved scenes" className="flex items-center gap-1.5">
+        <LayoutGrid size={13} strokeWidth={1.75} />
         Scenes
       </Button>
-      <Button
-        variant="ghost"
-        onClick={() => {
-          if (confirm("Start a new project? The current one stays in your browser history only until replaced.")) newProject();
-        }}
-      >
-        New
-      </Button>
-      <Button variant="ghost" onClick={() => fileRef.current?.click()}>
-        Open
-      </Button>
+      <div className="mx-1 flex items-center gap-0.5">
+        <IconButton
+          icon={FilePlus2}
+          size="md"
+          title="New project"
+          onClick={() => {
+            if (confirm("Start a new project? The current one stays in your browser history only until replaced.")) newProject();
+          }}
+        />
+        <IconButton icon={FolderOpen} size="md" title="Open a project file" onClick={() => fileRef.current?.click()} />
+        <IconButton icon={Save} size="md" title="Save the project to a file" onClick={exportJson} />
+        <IconButton icon={CircleHelp} size="md" title="Keyboard shortcuts" active={helpOpen} onClick={() => setHelpOpen((v) => !v)} />
+      </div>
       <input
         ref={fileRef}
         type="file"
@@ -86,9 +83,6 @@ export function TopBar() {
           e.target.value = "";
         }}
       />
-      <Button variant="ghost" onClick={exportJson}>
-        Save file
-      </Button>
       <Button variant="primary" onClick={() => setActivePanel("export")}>
         Export
       </Button>

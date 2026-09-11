@@ -15,6 +15,7 @@ import {
 } from "../../lib/fonts";
 import { deleteAsset, type AssetMeta } from "../../lib/assets";
 import { Button, Row } from "../ui";
+import { Upload, X } from "lucide-react";
 
 type Tab = "yours" | "google" | "bundled";
 
@@ -179,7 +180,8 @@ function FontDialog({
           {tab === "yours" && (
             <>
               <div className="flex items-center gap-2 px-2 py-2">
-                <Button variant="default" onClick={() => fileRef.current?.click()} disabled={busy}>
+                <Button variant="default" onClick={() => fileRef.current?.click()} disabled={busy} className="flex items-center gap-1.5">
+                  <Upload size={13} strokeWidth={1.75} />
                   {busy ? "Importing…" : "Import a .ttf or .otf"}
                 </Button>
                 <span className="text-[11px] text-neutral-500">
@@ -272,9 +274,9 @@ function FontRow({
           type="button"
           title="Remove from your library"
           onClick={onDelete}
-          className="rounded px-1.5 text-neutral-500 opacity-0 hover:text-red-300 group-hover:opacity-100"
+          className="grid h-6 w-6 place-items-center rounded text-neutral-500 opacity-0 hover:text-red-300 group-hover:opacity-100"
         >
-          ×
+          <X size={13} strokeWidth={1.75} />
         </button>
       )}
     </div>

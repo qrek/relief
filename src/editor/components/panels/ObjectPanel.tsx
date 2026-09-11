@@ -10,7 +10,8 @@ import { mediaTypeOf } from "../../lib/media";
 import { MOTIONS, motionById, motionPeriod } from "../../presets/motion";
 import { MediaLibrary } from "./MediaLibrary";
 import type { CoverObject, LabelObject, ModelObject, Motion, ShapeObject, TextObject } from "../../types";
-import { Button, ColorField, Row, Section, SelectField, Slider, TextField, Toggle, Vec3Field } from "../ui";
+import { Button, ColorField, IconButton, Row, Section, SelectField, Slider, TextField, Toggle, Vec3Field } from "../ui";
+import { Copy, Trash2 } from "lucide-react";
 
 export function ObjectPanel() {
   const obj = useSelectedObject();
@@ -42,13 +43,9 @@ export function ObjectPanel() {
       <Section
         title={objectKindLabel(obj)}
         right={
-          <div className="flex gap-1">
-            <Button variant="ghost" onClick={() => duplicateObject(obj.id)} title="Duplicate (Ctrl+D)">
-              Duplicate
-            </Button>
-            <Button variant="danger" onClick={() => removeObject(obj.id)} title="Delete">
-              Delete
-            </Button>
+          <div className="flex gap-0.5">
+            <IconButton icon={Copy} size="md" title="Duplicate (Ctrl+D)" onClick={() => duplicateObject(obj.id)} />
+            <IconButton icon={Trash2} size="md" title="Delete (Del)" danger onClick={() => removeObject(obj.id)} />
           </div>
         }
       >

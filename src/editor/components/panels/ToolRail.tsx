@@ -6,6 +6,7 @@ import { SHAPES } from "../../presets/shapes";
 import { ObjectLibrary } from "./ObjectLibrary";
 import { MediaLibrary } from "./MediaLibrary";
 import { mediaTypeOf } from "../../lib/media";
+import { ALargeSmall, Box, Image as ImageIcon, Move, RotateCw, Scaling, Shapes, Type, type LucideIcon } from "lucide-react";
 
 export function ToolRail() {
   const addText = useEditor((s) => s.addText);
@@ -32,10 +33,10 @@ export function ToolRail() {
     return () => window.removeEventListener("mousedown", onDown);
   }, [open, setOpen]);
 
-  const modes: { id: TransformMode; label: string; key: string }[] = [
-    { id: "translate", label: "Move", key: "W" },
-    { id: "rotate", label: "Rotate", key: "E" },
-    { id: "scale", label: "Scale", key: "R" },
+  const modes: { id: TransformMode; label: string; key: string; icon: LucideIcon }[] = [
+    { id: "translate", label: "Move", key: "W", icon: Move },
+    { id: "rotate", label: "Rotate", key: "E", icon: RotateCw },
+    { id: "scale", label: "Scale", key: "R", icon: Scaling },
   ];
 
   return (
@@ -44,19 +45,19 @@ export function ToolRail() {
       className="relative flex w-14 flex-col items-center gap-1 border-r border-white/5 bg-neutral-900 py-2"
     >
       <RailButton label="Text" hint="Add 3D text (T)" onClick={() => addText()}>
-        <span className="font-serif text-lg leading-none">T</span>
+        <Type size={18} strokeWidth={1.75} />
       </RailButton>
       <RailButton label="Shape" hint="Add a shape from SVG (S)" active={open === "shapes"} onClick={() => toggle("shapes")}>
-        <span className="text-base leading-none">◆</span>
+        <Shapes size={18} strokeWidth={1.75} />
       </RailButton>
       <RailButton label="Object" hint="Add a 3D object (O)" active={open === "objects"} onClick={() => toggle("objects")}>
-        <span className="text-base leading-none">⬢</span>
+        <Box size={18} strokeWidth={1.75} />
       </RailButton>
       <RailButton label="Type" hint="Add flat 2D type on the frame (L)" onClick={() => addLabel()}>
-        <span className="text-[13px] font-semibold leading-none">Aa</span>
+        <ALargeSmall size={18} strokeWidth={1.75} />
       </RailButton>
       <RailButton label="Cover" hint="Add an image or video with effects (C)" active={open === "media"} onClick={() => toggle("media")}>
-        <span className="text-base leading-none">▤</span>
+        <ImageIcon size={18} strokeWidth={1.75} />
       </RailButton>
 
       <div className="my-2 h-px w-8 bg-white/10" />
@@ -69,7 +70,7 @@ export function ToolRail() {
           active={transformMode === m.id}
           onClick={() => setTransformMode(m.id)}
         >
-          <span className="text-[10px] font-semibold">{m.key}</span>
+          <m.icon size={17} strokeWidth={1.75} />
         </RailButton>
       ))}
 
