@@ -595,3 +595,19 @@ l'est sur chaque ligne, pas seulement en bloc.
 - **Open sign** : un mot en diodes vertes sur panneau noir, avec la lueur d'un vrai panneau. Carré.
 - **Carpe feed** : une masse de chrome liquide sur papier, titre condensé en haut, petites lignes
   en bas. Portrait. Le bloom y ne sert qu'à faire respirer les reflets.
+
+## 26. Polices : import et Google Fonts
+
+Le sélecteur de police est un vrai panneau à trois sources, recherche en tête.
+
+- **Yours** : importer un fichier TTF ou OTF, la police de marque du client. Elle est stockée dans
+  le navigateur comme un modèle importé et ne quitte pas la machine. Le fichier est vérifié à
+  l'import.
+- **Google Fonts** : les 1 946 familles du catalogue, les plus utilisées en tête, par catégorie, avec
+  le choix de la graisse. Les noms s'affichent dans leur propre dessin. Aucune clé, aucun compte :
+  le serveur demande à Google le fichier TrueType et le relaie ; la police est ensuite gardée sur
+  la machine. Licences libres, usage et export sans restriction.
+- **Built in** : les treize polices livrées.
+
+Limite connue : les polices variables sont servies en graisses fixes, on choisit une graisse, pas un
+curseur continu.

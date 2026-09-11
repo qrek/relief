@@ -6,8 +6,7 @@ import { Center, Text3D } from "@react-three/drei";
 import * as THREE from "three";
 import type { LabelObject, PartInfo } from "../../types";
 import { useRuntime } from "../../runtime";
-import { fontById } from "../../presets/fonts";
-import { loadTypeface } from "../../lib/ttf";
+import { loadFont } from "../../lib/fonts";
 
 const LABEL_PARTS: PartInfo[] = [{ id: "body", name: "Text" }];
 
@@ -32,8 +31,7 @@ export function LabelMesh({ obj }: { obj: LabelObject }) {
     setParts(obj.id, LABEL_PARTS);
   }, [obj.id, setParts]);
 
-  const font = fontById(obj.fontId);
-  const data = use(loadTypeface(font.url)) as unknown as ComponentFont;
+  const data = use(loadFont(obj.fontId)) as unknown as ComponentFont;
   const group = useRef<THREE.Group>(null);
 
   const value =
@@ -89,7 +87,7 @@ export function LabelMesh({ obj }: { obj: LabelObject }) {
           */
           <Center
             key={i}
-            cacheKey={[line, font.id, obj.letterSpacing, obj.align].join("|")}
+            cacheKey={[line, obj.fontId, obj.letterSpacing, obj.align].join("|")}
             right={obj.align === "left"}
             left={obj.align === "right"}
             disableY

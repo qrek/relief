@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import * as THREE from "three";
 import { objectKindLabel, useEditor, useSelectedObject } from "../../store";
 import { useRuntime } from "../../runtime";
-import { FONTS } from "../../presets/fonts";
+import { FontPicker } from "./FontPicker";
 import { defaultParams, objectPresetById } from "../../presets/objects";
 import { mediaTypeOf } from "../../lib/media";
 import { MOTIONS, motionById, motionPeriod } from "../../presets/motion";
@@ -122,12 +122,7 @@ function LabelFields({ obj }: { obj: LabelObject }) {
           className="w-full resize-y rounded bg-white/5 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:ring-1 focus:ring-[var(--accent-edge)]"
         />
       </label>
-      <SelectField
-        label="Font"
-        value={obj.fontId}
-        options={FONTS.map((f) => ({ value: f.id, label: `${f.name} · ${f.category}` }))}
-        onChange={(fontId) => updateObject(obj.id, { fontId }, false)}
-      />
+      <FontPicker value={obj.fontId} onChange={(fontId) => updateObject(obj.id, { fontId }, false)} />
       <SelectField
         label="Align"
         value={obj.align}
@@ -364,12 +359,7 @@ function TextFields({ obj }: { obj: TextObject }) {
           className="w-full resize-y rounded bg-white/5 px-2 py-1.5 text-sm text-neutral-100 outline-none focus:ring-1 focus:ring-[var(--accent-edge)]"
         />
       </label>
-      <SelectField
-        label="Font"
-        value={obj.fontId}
-        options={FONTS.map((f) => ({ value: f.id, label: `${f.name} · ${f.category}` }))}
-        onChange={(fontId) => updateObject(obj.id, { fontId }, false)}
-      />
+      <FontPicker value={obj.fontId} onChange={(fontId) => updateObject(obj.id, { fontId }, false)} />
       <SelectField
         label="Case"
         value={obj.textCase}

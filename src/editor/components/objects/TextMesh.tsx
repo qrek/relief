@@ -3,16 +3,14 @@
 import { use, type ComponentProps } from "react";
 import { Center, Text3D } from "@react-three/drei";
 import type { TextObject } from "../../types";
-import { fontById } from "../../presets/fonts";
-import { loadTypeface } from "../../lib/ttf";
+import { loadFont } from "../../lib/fonts";
 import { ObjectMaterial } from "./ObjectMaterial";
 
 type Text3DFont = ComponentProps<typeof Text3D>["font"];
 
 /** Suspends until the TTF is converted; must be rendered inside a Suspense boundary. */
 export function TextMesh({ obj }: { obj: TextObject }) {
-  const font = fontById(obj.fontId);
-  const data = use(loadTypeface(font.url)) as unknown as Text3DFont;
+  const data = use(loadFont(obj.fontId)) as unknown as Text3DFont;
 
   const text =
     obj.textCase === "upper"
@@ -23,7 +21,7 @@ export function TextMesh({ obj }: { obj: TextObject }) {
 
   const cacheKey = [
     text,
-    font.id,
+    obj.fontId,
     obj.size,
     obj.depth,
     obj.letterSpacing,

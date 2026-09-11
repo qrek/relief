@@ -48,6 +48,22 @@ ne pas utiliser de blanc plein comme état actif, passer par ces variables.
 Un `model` a une `source` soit `procedural` (un preset de `presets/objects.ts` plus ses paramètres),
 soit `asset` (un fichier importé, référencé par son id IndexedDB).
 
+## Polices
+Un id de police est une petite adresse. Les polices livrées gardent leur id simple (`inter`), un
+fichier importé est `asset:<id>`, une famille Google est `google:<Famille>:<variante>` avec la
+notation de Google (`400`, `700`, `400i`). `lib/fonts.ts` résout les trois : `loadFont(id)`
+renvoie la typeface convertie, `describeFont(id)` un nom et une catégorie pour les panneaux.
+
+Google Fonts fonctionne **sans clé** : la route `/api/fonts` demande la feuille CSS classique en se
+présentant comme un client sans web fonts, ce qui fait servir des TTF au lieu de woff2, puis relaie
+le fichier. Le catalogue (`presets/google-fonts.json`, 1 946 familles, triées par popularité)
+vient des métadonnées publiques de Google ; le régénérer de temps en temps depuis
+`https://fonts.google.com/metadata/fonts`. Une police Google téléchargée est gardée en IndexedDB
+comme asset de kind `font` avec son id dans `data`, donc une seule fois par machine.
+
+Les polices importées (TTF ou OTF) sont des assets de kind `font` ; le fichier est parsé à l'import
+pour refuser un fichier cassé tout de suite. Elles ne quittent jamais le navigateur.
+
 ## Typographie plate et placage de logo
 Un `label` ne vit pas dans la scène : sa `matrixWorld` est recalculée à chaque frame depuis la
 caméra, donc il ne tourne jamais en orbite et reste au même endroit du cadre dans tous les formats.

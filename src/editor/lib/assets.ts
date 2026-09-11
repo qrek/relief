@@ -1,4 +1,4 @@
-export type AssetKind = "model" | "media" | "template";
+export type AssetKind = "model" | "media" | "template" | "font";
 
 export type StoredAsset = {
   id: string;
@@ -10,7 +10,10 @@ export type StoredAsset = {
   size: number;
   createdAt: number;
   blob: Blob;
-  /** JSON payload for entries that carry data rather than a file, such as templates. */
+  /**
+   * JSON payload for entries that carry data rather than a file, such as
+   * templates; for a font fetched from Google, the font id it was fetched for.
+   */
   data?: string;
 };
 
@@ -77,7 +80,7 @@ function openDb(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
-function tx<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+export function tx<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   return openDb().then(
     (db) =>
       new Promise<T>((resolve, reject) => {
