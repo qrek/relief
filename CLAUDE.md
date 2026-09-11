@@ -16,7 +16,7 @@ La spécification complète est dans `FEATURES.md` (section 15 = ordre des phase
 ## Déploiement
 Le dépôt `qrek/relief` est relié au projet Vercel `relief` (équipe `bacholiertheo-5383s-projects`,
 id `prj_vDAXMYu1Ll9KXrOjZBqFVnfuON1H`) : chaque push sur `main` déploie la production sur
-https://relief-bacholiertheo-5383s-projects.vercel.app. Il n'y a pas encore de backend : un projet
+https://relief-seven-gray.vercel.app (l'alias long `relief-bacholiertheo-5383s-projects.vercel.app` est derrière la protection de déploiement Vercel et redirige vers une connexion ; ne partager que l'adresse courte). Il n'y a pas encore de backend : un projet
 vit dans le navigateur de la personne qui l'ouvre. La route `/api/dev-snapshot` répond 404 en
 production, `/api/fonts` fonctionne partout.
 
