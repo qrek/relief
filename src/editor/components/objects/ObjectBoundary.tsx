@@ -2,7 +2,18 @@
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
-type Props = { objectId: string; onError: (id: string, message: string | null) => void; children: ReactNode };
+type Props = {
+  objectId: string;
+  /**
+   * Changes only when what the object is made of changes: a different file, a
+   * different preset. That is the moment a failed object deserves another try.
+   * Comparing children instead would reset on every parent render, and the
+   * error would be wiped the instant it was shown.
+   */
+  resetKey: string;
+  onError: (id: string, message: string | null) => void;
+  children: ReactNode;
+};
 type State = { failed: boolean };
 
 /**
@@ -22,7 +33,7 @@ export class ObjectBoundary extends Component<Props, State> {
   }
 
   componentDidUpdate(prev: Props) {
-    if (prev.children !== this.props.children && this.state.failed) {
+    if (prev.resetKey !== this.props.resetKey && this.state.failed) {
       this.setState({ failed: false });
       this.props.onError(this.props.objectId, null);
     }

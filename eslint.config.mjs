@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Third-party decoders copied verbatim from three, served as static files.
+    "public/**",
   ]),
 ]);
 

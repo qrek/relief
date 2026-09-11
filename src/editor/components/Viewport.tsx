@@ -376,6 +376,21 @@ function SceneContent() {
 
 const SINGLE_PART: PartInfo[] = [{ id: "body", name: "Body" }];
 
+/** What an object is made of, so a failed one is retried only when that changes. */
+function sourceKey(obj: SceneObject): string {
+  switch (obj.kind) {
+    case "model":
+      return JSON.stringify(obj.source);
+    case "cover":
+      return obj.source?.assetId ?? "";
+    case "text":
+    case "label":
+      return `${obj.fontId}|${obj.text}`;
+    case "shape":
+      return obj.svg.length + obj.svg.slice(0, 64);
+  }
+}
+
 function ObjectNode({ obj }: { obj: SceneObject }) {
   const ref = useRef<THREE.Group>(null);
   const select = useEditor((s) => s.select);
@@ -423,7 +438,7 @@ function ObjectNode({ obj }: { obj: SceneObject }) {
     >
       {/* Motion lives on an inner group so the gizmo still drives the base transform. */}
       <MotionGroup motion={obj.kind === "label" ? undefined : obj.motion}>
-        <ObjectBoundary objectId={obj.id} onError={setError}>
+        <ObjectBoundary objectId={obj.id} resetKey={sourceKey(obj)} onError={setError}>
           <Suspense fallback={null}>
             {obj.kind === "text" ? (
               <TextMesh obj={obj} />

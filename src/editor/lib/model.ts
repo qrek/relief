@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { assetUrl, getAsset } from "./assets";
@@ -19,11 +21,30 @@ export type LoadedModel = {
   hasAnimations: boolean;
 };
 
+let gltfLoader: GLTFLoader | null = null;
+
+/**
+ * Most GLBs in the wild are compressed: Draco from Blender, Sketchfab and the
+ * generators, meshopt from the web toolchains. Without the decoders the loader
+ * throws and the object stays empty, which is how "import does not work" looks
+ * from the outside. The Draco decoder is served from public/draco, copied from
+ * three's own examples.
+ */
+function gltfLoaderWithDecoders(): GLTFLoader {
+  if (gltfLoader) return gltfLoader;
+  const draco = new DRACOLoader();
+  draco.setDecoderPath("/draco/");
+  gltfLoader = new GLTFLoader();
+  gltfLoader.setDRACOLoader(draco);
+  gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+  return gltfLoader;
+}
+
 async function parseFile(url: string, format: string): Promise<{ root: THREE.Object3D; hasAnimations: boolean }> {
   switch (format) {
     case "glb":
     case "gltf": {
-      const gltf = await new GLTFLoader().loadAsync(url);
+      const gltf = await gltfLoaderWithDecoders().loadAsync(url);
       return { root: gltf.scene, hasAnimations: (gltf.animations?.length ?? 0) > 0 };
     }
     case "fbx": {
