@@ -16,7 +16,7 @@ import { DepthOfFieldPass, focalToFov } from "../lib/postFx";
 import { LookPass, lookIsActive } from "../lib/look";
 import { LightMarkers, SceneEnvironment, SceneLights, placementFromPosition } from "./Lights";
 import { CameraFrame } from "./CameraFrame";
-import { drawHelpersOnTop, hideEditorHelpers } from "../lib/export";
+import { drawHelpersOnTop, hideEditorHelpers, writePictureDepth } from "../lib/export";
 import { sceneClock } from "../lib/clock";
 import { applyMotion } from "../presets/motion";
 import { TextMesh } from "./objects/TextMesh";
@@ -596,7 +596,9 @@ function SceneContent() {
           infiniteGrid
           side={THREE.DoubleSide}
           raycast={() => null}
-          userData={{ excludeFromExport: true }}
+          // An aid, not part of the picture: never blurred or printed, and
+          // never exported; it is drawn afterwards, behind what stands on it.
+          userData={{ overlay: true }}
         />
       )}
       <LightMarkers lights={staging.lights} selectedId={selectedLightId} onSelect={selectLight} bindSelected={setLightObj3D} />
@@ -987,6 +989,9 @@ function SceneRenderer({
       // out of the frame and drawn over the finished result at the end.
       const helpers = hideEditorHelpers(scene, false, { overlaysOnly: true });
       drawPicture();
+      // The aids are drawn after the finish, but against the picture's depth,
+      // so the grid runs under the subject rather than over it.
+      writePictureDepth(gl, scene, shot);
       for (const o of helpers) o.visible = true;
       drawHelpersOnTop(gl, scene, shot);
       return;

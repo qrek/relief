@@ -10,7 +10,8 @@ La spécification complète est dans `FEATURES.md` (section 15 = ordre des phase
 - Next.js 16 (App Router, TypeScript, Tailwind 4), React 19.
 - three.js + @react-three/fiber + @react-three/drei, zustand (état + persistance localStorage).
 - opentype.js pour convertir les TTF de `public/fonts` en typeface JSON (voir `src/editor/lib/ttf.ts`).
-- Les modèles 3D (GLB/GLTF/FBX/OBJ) et les médias (images, vidéos) importés sont stockés en IndexedDB, pas en localStorage.
+- Les modèles 3D (GLB/FBX/OBJ) et les médias (images, vidéos) importés sont stockés en IndexedDB, pas en localStorage. Un `.gltf` seul est refusé avec un message (il référence des fichiers externes) : seul le `.glb` est autonome. Les GLB compressés Draco et meshopt et les textures KTX2 (Basis) sont décodés ; les décodeurs sont servis depuis `public/draco` et `public/basis`.
+- On peut **déposer des fichiers** n'importe où sur la colonne du viewport (`useFileDrop` dans `Editor.tsx`, `lib/importers.ts`) : modèle → objet, image ou vidéo → cover, `.hdr`/`.exr` → environnement, police → bibliothèque. Un cadre pointillé pendant le survol, un avis en bas ensuite, en rouge quand un fichier a été refusé et pourquoi.
 - Backend prévu : Supabase (auth, projets, storage) et déploiement Vercel. Pas encore branchés.
 
 ## Déploiement
@@ -300,12 +301,16 @@ canvas, ce qui n'est la même chose qu'en vue caméra. En vue libre, le raycast 
 l'œil libre (`setEvents({ compute })`), et une prise de mise au point mesure la distance depuis la
 caméra de prise de vue, pas depuis l'œil.
 
-Une **grille de repère** (drei `Grid`, au niveau du sol) s'allume dans la barre du bas. Elle porte
-`userData.excludeFromExport` : elle fait partie de l'image à l'écran, floutée et tramée avec elle,
-mais jamais exportée. C'est différent de `userData.overlay` (marqueurs de lumière, cadre caméra,
-gizmo), qui est retiré de l'image avant le flou ou le look puis redessiné net par-dessus par
-`drawHelpersOnTop`. Une aide qui doit être occultée par les objets est dans l'image ; une aide qui
-doit rester lisible est un overlay.
+Une **grille de repère** (drei `Grid`, au niveau du sol) s'allume dans la barre du bas. Comme les
+marqueurs de lumière, le cadre caméra et le gizmo, elle porte `userData.overlay` : retirée de
+l'image avant le flou ou le look, jamais exportée, redessinée nette par-dessus par
+`drawHelpersOnTop`. Pour qu'elle passe quand même **derrière** le sujet, `writePictureDepth`
+réécrit d'abord la profondeur de l'image dans le canvas (la scène rendue avec un matériau qui
+n'écrit que la profondeur, aides masquées) ; le gizmo et les marqueurs ignorent le test de
+profondeur et restent au-dessus. Une première version mettait la grille dans l'image pour qu'elle
+soit occultée, et elle prenait la trame et le flou : jugé faux, à raison. `userData.excludeFromExport`
+seul reste disponible pour une aide qui devrait être dans l'image sans être exportée, mais rien
+ne l'utilise aujourd'hui.
 
 ## Caméra et profondeur de champ
 `lib/postFx.ts` calcule la profondeur de champ sur trois échelles. Ce que chaque pixel voit à

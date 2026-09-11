@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
+import { useRuntime } from "../runtime";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
@@ -37,6 +39,15 @@ function gltfLoaderWithDecoders(): GLTFLoader {
   gltfLoader = new GLTFLoader();
   gltfLoader.setDRACOLoader(draco);
   gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+  // KTX2 (Basis) textures, the compressed textures of the web toolchains: the
+  // transcoder is served from public/basis and picks a format the GPU takes.
+  const gl = useRuntime.getState().gl;
+  if (gl) {
+    const ktx2 = new KTX2Loader();
+    ktx2.setTranscoderPath("/basis/");
+    ktx2.detectSupport(gl);
+    gltfLoader.setKTX2Loader(ktx2);
+  }
   return gltfLoader;
 }
 

@@ -59,6 +59,29 @@ export function hideEditorHelpers(
   return hidden;
 }
 
+const depthOnly = new THREE.MeshBasicMaterial({ colorWrite: false });
+
+/**
+ * Writes the picture's depth into the canvas, and nothing else, so the aids
+ * drawn over a finished frame still sit behind whatever is in front of them:
+ * a floor grid runs under the subject instead of across it. Call it while the
+ * aids are hidden, after the frame has been finished.
+ */
+export function writePictureDepth(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
+  const override = scene.overrideMaterial;
+  const background = scene.background;
+  const autoClear = renderer.autoClear;
+  scene.overrideMaterial = depthOnly;
+  scene.background = null;
+  renderer.autoClear = false;
+  renderer.setRenderTarget(null);
+  renderer.clearDepth();
+  renderer.render(scene, camera);
+  scene.overrideMaterial = override;
+  scene.background = background;
+  renderer.autoClear = autoClear;
+}
+
 /**
  * Draws the editing aids over a frame that has already been finished on the
  * canvas. When the frame goes through depth of field or a look, the aids were

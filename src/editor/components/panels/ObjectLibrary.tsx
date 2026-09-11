@@ -59,6 +59,10 @@ export function ObjectLibrary({ onClose }: { onClose: () => void }) {
         if (file.size > MAX_MODEL_BYTES) {
           throw new Error(`${file.name} is ${formatBytes(file.size)}, over the ${formatBytes(MAX_MODEL_BYTES)} limit`);
         }
+        if (ext === "gltf") {
+          // A .gltf alone points at files it does not carry; only the binary form is self-contained.
+          throw new Error(`${file.name}: a .gltf refers to separate .bin and texture files. Export it as one .glb instead.`);
+        }
         const meta = await putAsset(file, "model");
         addModel({ type: "asset", assetId: meta.id }, meta.name);
       }
@@ -150,8 +154,8 @@ export function ObjectLibrary({ onClose }: { onClose: () => void }) {
             e.target.value = "";
           }}
         />
-        <span className="flex-1 truncate text-[11px] text-neutral-500">
-          {error ?? `${OBJECT_PRESETS.length} objects in ${OBJECT_COLLECTIONS.length} collections`}
+        <span className={`flex-1 text-[11px] ${error ? "text-red-300" : "truncate text-neutral-500"}`} title={error ?? undefined}>
+          {error ?? `${OBJECT_PRESETS.length} objects in ${OBJECT_COLLECTIONS.length} collections, or drop files on the viewport`}
         </span>
       </div>
     </div>

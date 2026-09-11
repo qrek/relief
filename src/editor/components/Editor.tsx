@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import * as THREE from "three";
 import { CAMERA_ID, useEditor, useSelectedObject, type PanelId } from "../store";
 import { useRuntime } from "../runtime";
@@ -17,6 +17,7 @@ import { ExportPanel } from "./panels/ExportPanel";
 import { LookPanel } from "./panels/LookPanel";
 import { Timeline } from "./panels/Timeline";
 import { ALL_CAMERA_CHANNELS, ALL_TRANSFORM_CHANNELS } from "../lib/keyframes";
+import { importDroppedFiles } from "../lib/importers";
 
 export default function Editor() {
   const activePanel = useEditor((s) => s.activePanel);
@@ -26,6 +27,7 @@ export default function Editor() {
 
   useKeyboardShortcuts();
   useLayoutNudge();
+  const drop = useFileDrop();
 
   // The second tab is the selection's own treatment: a solid has a material, a
   // piece of media has effects. One slot, named for what is selected, so there
@@ -52,12 +54,26 @@ export default function Editor() {
       <TopBar />
       <div className="flex min-h-0 flex-1">
         <ToolRail />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col" {...drop.handlers}>
           <div className="relative min-h-0 flex-1">
             <Viewport />
             <div className="absolute left-3 top-3 w-56 rounded-lg border border-white/10 bg-neutral-900/90 backdrop-blur">
               <LayersPanel />
             </div>
+            {drop.over && (
+              <div className="pointer-events-none absolute inset-3 z-30 flex items-center justify-center rounded-xl border-2 border-dashed border-[var(--accent)] bg-black/50 text-sm text-neutral-100">
+                Drop to import: models, images, videos, HDRI maps, fonts
+              </div>
+            )}
+            {drop.notice && (
+              <div
+                className={`pointer-events-none absolute bottom-14 left-1/2 z-30 max-w-[70%] -translate-x-1/2 rounded-lg px-3 py-2 text-xs shadow-xl ring-1 ${
+                  drop.notice.error ? "bg-red-950/95 text-red-200 ring-red-500/40" : "bg-neutral-900/95 text-neutral-200 ring-white/10"
+                }`}
+              >
+                {drop.notice.text}
+              </div>
+            )}
           </div>
           {timelineOpen && <Timeline />}
         </div>
@@ -110,6 +126,48 @@ function useLayoutNudge() {
     }, 200);
     return () => clearInterval(timer);
   }, []);
+}
+
+/**
+ * Files dropped anywhere on the viewport column are imported for what they
+ * are. The dashed frame says a drop is welcome; a notice says what happened.
+ */
+function useFileDrop() {
+  const [over, setOver] = useState(false);
+  const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const id = setTimeout(() => setNotice(null), notice.error ? 8000 : 4000);
+    return () => clearTimeout(id);
+  }, [notice]);
+
+  const handlers = {
+    onDragOver: (e: React.DragEvent) => {
+      if (!e.dataTransfer.types.includes("Files")) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      if (!over) setOver(true);
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      // Leaving a child fires too; only leaving the column itself counts.
+      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+      setOver(false);
+    },
+    onDrop: async (e: React.DragEvent) => {
+      if (!e.dataTransfer.types.includes("Files")) return;
+      e.preventDefault();
+      setOver(false);
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length === 0) return;
+      setNotice({ text: files.length === 1 ? `Importing ${files[0].name}` : `Importing ${files.length} files`, error: false });
+      const report = await importDroppedFiles(files);
+      const parts: string[] = [];
+      if (report.added.length) parts.push(`Added ${report.added.join(", ")}.`);
+      parts.push(...report.errors);
+      setNotice({ text: parts.join(" "), error: report.errors.length > 0 });
+    },
+  };
+  return { over, notice, handlers };
 }
 
 /** Frames the selection: swings the camera in until the object fills the shot. */
