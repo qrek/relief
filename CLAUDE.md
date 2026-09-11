@@ -26,6 +26,17 @@ La spécification complète est dans `FEATURES.md` (section 15 = ordre des phase
 - `src/editor/lib` : conversion TTF, extrusion SVG, helpers de géométrie, chargement de modèles et de médias, chaîne d'effets, vignettes, stockage IndexedDB, export image.
 - `src/editor/components` : `Viewport.tsx` (Canvas R3F), `objects/` (meshes), `panels/` (UI), `ui.tsx` (primitives).
 
+## Interface
+Disposition d'origine, sombre et neutre : rail d'outils à gauche, calques en carte sur le viewport,
+panneau à onglets à droite. Deux refontes ont été essayées puis écartées par l'utilisateur (un
+pupitre caméra en bas, puis une disposition façon Figma) ; ne pas reproposer de refonte de
+structure sans qu'il la demande.
+
+Une seule couleur d'accent, `--accent` dans `globals.css` (vert acide pour l'instant), avec
+`--accent-ink` pour le texte posé dessus et `--accent-soft` / `--accent-edge` qui en dérivent.
+Elle signifie toujours « actif » ou « sélectionné ». Les surfaces restent en `white/5`, `white/10` :
+ne pas utiliser de blanc plein comme état actif, passer par ces variables.
+
 ## Cinq types d'objets
 `SceneObject` est une union : `text` (texte 3D extrudé), `shape` (SVG extrudé), `model` (objet 3D),
 `cover` (image ou vidéo avec une pile d'effets), `label` (typographie plate verrouillée sur le cadre).
