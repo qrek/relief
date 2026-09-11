@@ -154,10 +154,15 @@ changeait le grain et le flou à l'écran, et l'écran ne ressemblait pas au fic
 flou de la profondeur de champ (`maxBlur`) suit la même règle via `referenceHeight`.
 
 **Vignettes d'effets** (`lib/effectThumbs.ts`) : chaque effet est prévisualisé par lui-même, sur une
-petite scène fixe (un nœud bleu brillant, une bille orange émissive, fond gris moyen) rendue par
+petite scène fixe (un seul cube arrondi corail, gros dans le cadre, fond gris moyen) rendue par
 `LookPass` dans un renderer hors écran, une vignette par tick de `setTimeout` (pas `rAF`, qu'un
 onglet en arrière-plan bride), puis gardée en mémoire. Un fond gris, pas papier : une lueur et une
-traînée doivent se voir, une trame aussi.
+traînée doivent se voir, une trame aussi. Une première version avec un nœud torique a été jugée
+bizarre et illisible ; une forme simple que l'œil connaît laisse toute la place à l'effet.
+`PREVIEW_PARAMS` donne à chaque effet des réglages **exagérés pour la vignette** (cellules de
+trame comptées pour cent pixels de haut, amplitudes poussées) : les valeurs par défaut sont
+faites pour une affiche et ne se voient pas à cette taille. Les effets Alpha sont rendus sur fond
+transparent puis posés sur le gris, pour qu'un contour ou une ombre ait un bord à trouver.
 
 Deux leçons de shader qui complètent celles de la profondeur de champ :
 - Une passe qui dessine **toujours** dans une cible ne reçoit pas les fonctions de tone mapping

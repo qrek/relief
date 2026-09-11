@@ -145,7 +145,7 @@ function EffectPicker({ onPick }: { onPick: (effectId: string) => void }) {
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         {list.map((e) => (
           <button
             key={e.id}
@@ -155,7 +155,7 @@ function EffectPicker({ onPick }: { onPick: (effectId: string) => void }) {
             className="group flex flex-col gap-1 rounded-md p-1 text-left hover:bg-white/10"
           >
             <EffectThumb def={e} className="aspect-[4/3] w-full rounded ring-1 ring-white/10 group-hover:ring-[var(--accent-edge)]" />
-            <span className="truncate px-0.5 text-[10.5px] leading-tight text-neutral-300 group-hover:text-white">{e.name}</span>
+            <span className="truncate px-0.5 text-[11px] leading-tight text-neutral-300 group-hover:text-white">{e.name}</span>
           </button>
         ))}
       </div>
@@ -196,7 +196,7 @@ function EffectCard({
     <Section
       title={
         <>
-          <EffectThumb def={def} className="h-[18px] w-6 rounded-sm ring-1 ring-white/10" />
+          <EffectThumb def={def} className="h-6 w-8 rounded-sm ring-1 ring-white/10" />
           {`${index + 1}. ${def.name}`}
         </>
       }
