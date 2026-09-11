@@ -550,7 +550,10 @@ coûterait plus qu'il ne rapporterait.
 ## 24. Look, type derrière la scène, premier template
 
 ### Look
-Une pile d'effets sur l'image entière, dans le panneau Staging. Les quarante-neuf effets des covers
+Une pile d'effets sur l'image entière, dans son propre onglet Look. Le panneau de droite a été
+réorganisé pour lever la confusion entre effets et mise en scène : Object, puis Material ou Effects
+selon que la sélection est un solide ou une image, puis Scene, Look, Export. La limite de trois
+effets par pile est remplacée par une borne de vingt-quatre, avec un rappel du coût au-delà de six. Les quarante-neuf effets des covers
 s'appliquent désormais aussi au cadre fini, type et objets confondus, après la profondeur de champ.
 Un nouvel effet, **Colour halftone**, reproduit une trame quatre couleurs de presse : quatre
 plaques aux angles classiques, chaque point dimensionné par la quantité d'encre que l'image demande,

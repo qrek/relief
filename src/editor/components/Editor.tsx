@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import * as THREE from "three";
-import { useEditor, type PanelId } from "../store";
+import { useEditor, useSelectedObject, type PanelId } from "../store";
 import { useRuntime } from "../runtime";
 import { Viewport } from "./Viewport";
 import { TopBar } from "./panels/TopBar";
@@ -13,21 +13,35 @@ import { MaterialPanel } from "./panels/MaterialPanel";
 import { EffectsPanel } from "./panels/EffectsPanel";
 import { StagingPanel } from "./panels/StagingPanel";
 import { ExportPanel } from "./panels/ExportPanel";
-
-const PANELS: { id: PanelId; label: string }[] = [
-  { id: "object", label: "Object" },
-  { id: "material", label: "Material" },
-  { id: "effects", label: "Effects" },
-  { id: "staging", label: "Staging" },
-  { id: "export", label: "Export" },
-];
+import { LookPanel } from "./panels/LookPanel";
 
 export default function Editor() {
   const activePanel = useEditor((s) => s.activePanel);
   const setActivePanel = useEditor((s) => s.setActivePanel);
+  const selected = useSelectedObject();
 
   useKeyboardShortcuts();
   useLayoutNudge();
+
+  // The second tab is the selection's own treatment: a solid has a material, a
+  // piece of media has effects. One slot, named for what is selected, so there
+  // is never a dead tab and never a question of which one applies.
+  const mediaSelected = selected?.kind === "cover";
+  const treatment: PanelId = mediaSelected ? "effects" : "material";
+  const tab: PanelId =
+    activePanel === "material" || activePanel === "effects" ? treatment : activePanel;
+
+  const panels: { id: PanelId; label: string; hint: string }[] = [
+    { id: "object", label: "Object", hint: "What is selected (1)" },
+    {
+      id: treatment,
+      label: mediaSelected ? "Effects" : "Material",
+      hint: mediaSelected ? "Effects on this image or video (2)" : "Surface of the selected object (2)",
+    },
+    { id: "scene", label: "Scene", hint: "Light, environment and camera (3)" },
+    { id: "look", label: "Look", hint: "Effects over the whole picture (4)" },
+    { id: "export", label: "Export", hint: "Image, video and formats (5)" },
+  ];
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-neutral-950 text-neutral-200 select-none">
@@ -42,13 +56,14 @@ export default function Editor() {
         </div>
         <aside className="flex w-80 flex-col border-l border-white/5 bg-neutral-900">
           <nav className="flex border-b border-white/5">
-            {PANELS.map((p) => (
+            {panels.map((p) => (
               <button
                 key={p.id}
                 type="button"
+                title={p.hint}
                 onClick={() => setActivePanel(p.id)}
                 className={`flex-1 py-2.5 text-xs font-medium transition ${
-                  activePanel === p.id
+                  tab === p.id
                     ? "border-b-2 border-[var(--accent)] text-[var(--accent)]"
                     : "text-neutral-500 hover:text-neutral-200"
                 }`}
@@ -58,11 +73,12 @@ export default function Editor() {
             ))}
           </nav>
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {activePanel === "object" && <ObjectPanel />}
-            {activePanel === "material" && <MaterialPanel />}
-            {activePanel === "effects" && <EffectsPanel />}
-            {activePanel === "staging" && <StagingPanel />}
-            {activePanel === "export" && <ExportPanel />}
+            {tab === "object" && <ObjectPanel />}
+            {tab === "material" && <MaterialPanel />}
+            {tab === "effects" && <EffectsPanel />}
+            {tab === "scene" && <StagingPanel />}
+            {tab === "look" && <LookPanel />}
+            {tab === "export" && <ExportPanel />}
           </div>
         </aside>
       </div>
@@ -194,10 +210,10 @@ function useKeyboardShortcuts() {
           s.setActivePanel("material");
           break;
         case "3":
-          s.setActivePanel("effects");
+          s.setActivePanel("scene");
           break;
         case "4":
-          s.setActivePanel("staging");
+          s.setActivePanel("look");
           break;
         case "5":
           s.setActivePanel("export");

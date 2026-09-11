@@ -20,16 +20,21 @@ export function EffectsPanel() {
   if (obj.kind !== "cover") {
     return (
       <div className="p-4 text-xs leading-relaxed text-neutral-500">
-        Effects run on cover objects: an image or a video placed in the scene.
-        <br />
-        <br />
-        Add one from the left toolbar, then stack up to {MAX_EFFECTS} effects on it.
+        A solid object has a material, not effects. To treat the whole picture, open Look.
       </div>
     );
   }
 
   const cover = obj as CoverObject;
-  return <EffectStack ownerId={cover.id} effects={cover.effects} title="Stack" />;
+  return (
+    <>
+      <p className="border-b border-white/5 px-3 py-3 text-[11px] leading-relaxed text-neutral-500">
+        These run on this {cover.source?.mediaType === "video" ? "video" : "image"} only, before it is placed in the
+        scene. To treat the whole picture at once, type and objects included, use Look.
+      </p>
+      <EffectStack ownerId={cover.id} effects={cover.effects} title="Effects on this media" />
+    </>
+  );
 }
 
 /**
@@ -55,7 +60,7 @@ export function EffectStack({
   return (
     <>
       <Section
-        title={`${title} · ${effects.length}/${MAX_EFFECTS}`}
+        title={effects.length > 0 ? `${title} · ${effects.length}` : title}
         right={
           <Button variant="default" onClick={() => setPicking((v) => !v)} disabled={full}>
             {picking ? "Close" : "Add effect"}
@@ -77,7 +82,13 @@ export function EffectStack({
         )}
         {full && (
           <p className="text-[11px] text-neutral-500">
-            Stack is full. Remove one to add another.
+            That is as many as the stack takes. Remove one to add another.
+          </p>
+        )}
+        {!full && effects.length >= 6 && (
+          <p className="text-[11px] leading-relaxed text-neutral-500">
+            Every effect is one more pass over the frame. A long stack is fine on a still, and a look this long
+            will show on a laptop while the camera moves.
           </p>
         )}
       </Section>

@@ -709,7 +709,12 @@ export const EFFECTS: EffectDef[] = [
 
 export const EFFECT_CATEGORIES = Array.from(new Set(EFFECTS.map((e) => e.category)));
 
-export const MAX_EFFECTS = 3;
+/**
+ * A sanity bound rather than a design limit. Every effect is one more full
+ * frame pass, and a cover's stack only reruns when it changes, so a long stack
+ * costs little; a look's stack runs every frame, which is where it can be felt.
+ */
+export const MAX_EFFECTS = 24;
 
 export function effectById(id: string): EffectDef | undefined {
   return EFFECTS.find((e) => e.id === id);

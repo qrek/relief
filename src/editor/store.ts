@@ -30,7 +30,13 @@ import {
 } from "./presets/effects";
 
 export type TransformMode = "translate" | "rotate" | "scale";
-export type PanelId = "object" | "material" | "effects" | "staging" | "export";
+/**
+ * Object is what is selected. Material or effects is its surface or its
+ * treatment, one or the other depending on whether a solid or a piece of media
+ * is selected. Scene is the room around it, look is the finish over the whole
+ * picture, and export is the way out.
+ */
+export type PanelId = "object" | "material" | "effects" | "scene" | "look" | "export";
 
 /**
  * How much the viewport is allowed to spend on a frame. Draft is for a laptop

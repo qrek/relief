@@ -28,7 +28,12 @@ La spécification complète est dans `FEATURES.md` (section 15 = ordre des phase
 
 ## Interface
 Disposition d'origine, sombre et neutre : rail d'outils à gauche, calques en carte sur le viewport,
-panneau à onglets à droite. Deux refontes ont été essayées puis écartées par l'utilisateur (un
+panneau à onglets à droite. Les onglets suivent trois niveaux : **Object** (la sélection),
+**Material ou Effects** (un seul emplacement, nommé selon la sélection : un solide a une matière,
+une image ou vidéo a des effets, il n'y a donc jamais d'onglet mort), **Scene** (lumière,
+environnement, caméra ; le mot Staging du concurrent n'est plus employé), **Look** (les effets sur
+l'image entière) et **Export**. `PanelId` garde `material` et `effects` comme deux ids, l'éditeur
+résout lequel afficher. Deux refontes ont été essayées puis écartées par l'utilisateur (un
 pupitre caméra en bas, puis une disposition façon Figma) ; ne pas reproposer de refonte de
 structure sans qu'il la demande.
 
@@ -85,8 +90,11 @@ En dessous, les scènes que le designer a lui-même enregistrées : le projet s�
 champ `data` d'une entrée IndexedDB de kind `template`, la vignette dans `blob`.
 
 ## Look : effets sur l'image entière
-`staging.look` est une pile d'effets (les mêmes que ceux des covers, `MAX_EFFECTS` au plus) qui
-s'applique à **toute l'image finie**, type et objets confondus, après la profondeur de champ.
+`staging.look` est une pile d'effets (les mêmes que ceux des covers) qui s'applique à **toute
+l'image finie**, type et objets confondus, après la profondeur de champ. Elle a son propre onglet
+Look. `MAX_EFFECTS` (24) est une borne de sécurité, pas une limite de design : chaque effet est une
+passe plein écran de plus, la pile d'un cover ne retourne que quand elle change, celle du look tourne
+à chaque image.
 C'est ce qui transforme un rendu en impression. `lib/look.ts` porte la passe : la scène est
 dessinée dans une cible, développée (tone mapping puis transfert sRGB, à la main), la pile tourne
 dessus via `EffectChain`, et le résultat est recopié tel quel sur le canvas.

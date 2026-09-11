@@ -110,7 +110,7 @@ export function TopBar() {
               ["Deselect", "Esc"],
               ["Undo / Redo", "Ctrl + Z / Ctrl + Shift + Z"],
               ["Export image", "Ctrl + E"],
-              ["Panels: object, material, effects, staging, export", "1 to 5"],
+              ["Panels: object, material or effects, scene, look, export", "1 to 5"],
             ].map(([k, v]) => (
               <li key={k} className="contents">
                 <span>{k}</span>
