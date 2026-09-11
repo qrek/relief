@@ -23,11 +23,11 @@ export type TemplateDef = {
 export const TEMPLATES: TemplateDef[] = [
   {
     id: "like-no-one",
-    name: "Like no one",
-    blurb: "A three-line headline at the back, a faceted stone in front, and the whole sheet run through a four-colour press. Portrait, for a poster or a feed.",
+    name: "Riso poster",
+    blurb: "A word split over two lines at the back, a faceted stone in front, and the whole sheet run through a four-colour press. Portrait, for a poster or a feed.",
     thumbnail: "/templates/like-no-one.jpg",
     project: {
-      "name": "Like no one",
+      "name": "Riso poster",
       "formatId": "portrait",
       "customFormat": {
         "width": 1600,
@@ -105,7 +105,7 @@ export const TEMPLATES: TemplateDef[] = [
         {
           "id": "headline",
           "kind": "label",
-          "name": "LIKE\nNO\nONE",
+          "name": "RE\nLIEF",
           "visible": true,
           "locked": false,
           "transform": {
@@ -161,11 +161,11 @@ export const TEMPLATES: TemplateDef[] = [
             "axis": 1,
             "phase": 0
           },
-          "text": "LIKE\nNO\nONE",
+          "text": "RE\nLIEF",
           "fontId": "staatliches",
           "size": 0.258,
           "letterSpacing": -0.005,
-          "lineHeight": 1.25,
+          "lineHeight": 2.5,
           "align": "center",
           "textCase": "upper",
           "color": "#2a62ff",
@@ -251,11 +251,11 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     id: "open-sign",
-    name: "Open sign",
+    name: "LED sign",
     blurb: "One word in lit diodes on a dark board, with the glow a real sign throws. Square, for a post or an avatar. Type your own word.",
     thumbnail: "/templates/open-sign.jpg",
     project: {
-      "name": "Open sign",
+      "name": "LED sign",
       "formatId": "square",
       "customFormat": {
         "width": 1600,
@@ -305,8 +305,8 @@ export const TEMPLATES: TemplateDef[] = [
             "effectId": "led",
             "enabled": true,
             "params": {
-              "pitch": 60,
-              "dot": 0.7,
+              "pitch": 108,
+              "dot": 0.74,
               "gain": 1.5,
               "cut": 0.06,
               "sat": 1.8
@@ -322,8 +322,8 @@ export const TEMPLATES: TemplateDef[] = [
             "enabled": true,
             "params": {
               "threshold": 0.5,
-              "radius": 18,
-              "intensity": 0.9,
+              "radius": 11,
+              "intensity": 0.8,
               "knee": 0.7
             },
             "colors": {}
@@ -334,7 +334,7 @@ export const TEMPLATES: TemplateDef[] = [
         {
           "id": "word",
           "kind": "text",
-          "name": "OPEN",
+          "name": "RELIEF",
           "visible": true,
           "locked": false,
           "transform": {
@@ -390,11 +390,11 @@ export const TEMPLATES: TemplateDef[] = [
             "axis": 1,
             "phase": 0
           },
-          "text": "OPEN",
-          "fontId": "staatliches",
-          "size": 1.3,
-          "depth": 0.42,
-          "letterSpacing": 0.02,
+          "text": "RELIEF",
+          "fontId": "silkscreen",
+          "size": 0.62,
+          "depth": 0.05,
+          "letterSpacing": 0.04,
           "lineHeight": 1,
           "textCase": "none",
           "bevelEnabled": false,
@@ -408,11 +408,11 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     id: "carpe-feed",
-    name: "Carpe feed",
+    name: "Chrome print",
     blurb: "A liquid chrome mass on paper, a condensed headline above, the small print below. Portrait, for a poster or a story. Swap the words, keep the silence around them.",
     thumbnail: "/templates/carpe-feed.jpg",
     project: {
-      "name": "Carpe feed",
+      "name": "Chrome print",
       "formatId": "portrait",
       "customFormat": {
         "width": 1600,
@@ -558,7 +558,7 @@ export const TEMPLATES: TemplateDef[] = [
         {
           "id": "headline",
           "kind": "label",
-          "name": "CARPE FEED.\nMEMENTO MORE.",
+          "name": "RELIEF.\nMORE THAN FLAT.",
           "visible": true,
           "locked": false,
           "transform": {
@@ -614,7 +614,7 @@ export const TEMPLATES: TemplateDef[] = [
             "axis": 1,
             "phase": 0
           },
-          "text": "CARPE FEED.\nMEMENTO MORE.",
+          "text": "RELIEF.\nMORE THAN FLAT.",
           "fontId": "staatliches",
           "size": 0.05,
           "letterSpacing": 0.01,

@@ -42,7 +42,7 @@ export function ToolRail() {
   return (
     <div
       ref={railRef}
-      className="relative flex w-14 flex-col items-center gap-1 border-r border-white/5 bg-neutral-900 py-2"
+      className="relative flex w-14 flex-col items-center gap-1 rounded-2xl border border-white/10 bg-neutral-900/95 py-2 shadow-2xl shadow-black/50 backdrop-blur"
     >
       <RailButton label="Text" hint="Add 3D text (T)" onClick={() => addText()}>
         <Type size={18} strokeWidth={1.75} />

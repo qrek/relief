@@ -190,7 +190,7 @@ export function Timeline() {
 
   return (
     <div
-      className="flex h-48 shrink-0 flex-col border-t border-white/5 bg-neutral-900 text-xs text-neutral-300 outline-none"
+      className="flex h-48 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/95 text-xs text-neutral-300 shadow-2xl shadow-black/50 outline-none backdrop-blur"
       tabIndex={0}
       onKeyDown={(e) => {
         // The window's own shortcuts sit above this; they must not see a Delete meant for a key.

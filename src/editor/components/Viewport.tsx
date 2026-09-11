@@ -7,6 +7,7 @@ import { Columns2, Film, Grid3x3, Orbit, Pause, Play, Video } from "lucide-react
 import { hasKeys, sampleCamera, sampleChannel, sampleTransform } from "../lib/keyframes";
 import { useClockTick } from "./useClockTick";
 import { splitLayout } from "../lib/viewLayout";
+import { CENTRE_SHIFT, GAP, LEFT_INSET, RIGHT_INSET } from "./layout";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { CAMERA_ID, currentFormat, useEditor, type Quality, type ViewMode } from "../store";
@@ -58,11 +59,11 @@ export function Viewport() {
     const el = outer.current;
     if (!el) return;
     // Through the camera the canvas is the frame, sized to the format. In the
-    // free view it is a window on the set and takes the whole area.
-    const pad = cameraView ? 32 : 0;
+    // free view it is a window on the set and takes the whole room. Either
+    // way the room is what the floating cards leave uncovered.
     const measure = () => {
-      const aw = el.clientWidth - pad * 2;
-      const ah = el.clientHeight - pad * 2;
+      const aw = el.clientWidth - LEFT_INSET - RIGHT_INSET;
+      const ah = el.clientHeight - GAP * 2;
       const aspect = cameraView ? format.width / format.height : aw / Math.max(1, ah);
       let w = aw;
       let h = w / aspect;
@@ -90,7 +91,11 @@ export function Viewport() {
   const transparent = project.staging.transparent && !project.staging.envAsBackground;
 
   return (
-    <div ref={outer} className="absolute inset-0 flex items-center justify-center overflow-hidden bg-neutral-950">
+    <div
+      ref={outer}
+      className="absolute inset-0 flex items-center justify-center overflow-hidden bg-neutral-950"
+      style={{ paddingLeft: LEFT_INSET, paddingRight: RIGHT_INSET, paddingTop: GAP, paddingBottom: GAP }}
+    >
       <div
         className={cameraView ? "relative shadow-2xl shadow-black/60 ring-1 ring-white/10" : "relative"}
         style={{
@@ -141,7 +146,7 @@ function Transport() {
   const setTimelineOpen = useEditor((s) => s.setTimelineOpen);
   const { time, playing } = useClockTick(20);
   return (
-    <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-neutral-900/90 px-2 py-1 text-xs text-neutral-300 ring-1 ring-white/10 backdrop-blur">
+    <div className="absolute bottom-3 flex items-center gap-1 rounded-full bg-neutral-900/90 px-2 py-1 text-xs text-neutral-300 ring-1 ring-white/10 backdrop-blur" style={{ left: LEFT_INSET }}>
       <button
         type="button"
         onClick={() => sceneClock.toggle()}
@@ -187,7 +192,10 @@ function FocusPickerHint() {
 function FreeViewHint({ mode }: { mode: ViewMode }) {
   const setViewMode = useEditor((s) => s.setViewMode);
   return (
-    <div className={`pointer-events-none absolute top-4 z-20 flex justify-center ${mode === "split" ? "left-0 w-1/2" : "inset-x-0"}`}>
+    <div
+      className="pointer-events-none absolute top-4 z-20 flex justify-center"
+      style={mode === "split" ? { left: LEFT_INSET, width: `calc((100% - ${LEFT_INSET + RIGHT_INSET}px) / 2)` } : { left: LEFT_INSET, right: RIGHT_INSET }}
+    >
       <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-neutral-900/90 px-3 py-1 text-[11px] text-neutral-300 ring-1 ring-white/10 backdrop-blur">
         {mode === "split" ? "The set. The picture is on the right." : "Free view: the camera is the frame drawn in the set."}
         <button
@@ -313,7 +321,10 @@ function FormatBadge() {
   const f = currentFormat(project);
   const hasSafe = safeAreaFor(project.formatId) !== null;
   return (
-    <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-neutral-900/90 px-3 py-1.5 text-xs text-neutral-300 ring-1 ring-white/10 backdrop-blur">
+    <div
+      className="absolute bottom-3 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-neutral-900/90 px-3 py-1.5 text-xs text-neutral-300 ring-1 ring-white/10 backdrop-blur"
+      style={{ left: `calc(50% + ${CENTRE_SHIFT}px)` }}
+    >
       <ViewControls />
       <span className="h-3 w-px bg-white/10" />
       <select

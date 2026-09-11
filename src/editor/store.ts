@@ -228,7 +228,7 @@ export function createProject(): Project {
     name: "Untitled",
     objects: [createTextObject()],
     staging: { ...DEFAULT_STAGING },
-    formatId: "square",
+    formatId: "landscape",
     customFormat: { width: 1600, height: 1200 },
     camera: { position: [...DEFAULT_CAMERA.position], target: [...DEFAULT_CAMERA.target], keys: {} },
     clip: { duration: 4 },

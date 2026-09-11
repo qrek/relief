@@ -18,6 +18,7 @@ import { LookPanel } from "./panels/LookPanel";
 import { Timeline } from "./panels/Timeline";
 import { ALL_CAMERA_CHANNELS, ALL_TRANSFORM_CHANNELS } from "../lib/keyframes";
 import { importDroppedFiles } from "../lib/importers";
+import { CARD, GAP, LEFT_INSET, RAIL_WIDTH, RIGHT_INSET } from "./layout";
 
 export default function Editor() {
   const activePanel = useEditor((s) => s.activePanel);
@@ -52,14 +53,10 @@ export default function Editor() {
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-neutral-950 text-neutral-200 select-none">
       <TopBar />
-      <div className="flex min-h-0 flex-1">
-        <ToolRail />
-        <div className="flex min-w-0 flex-1 flex-col" {...drop.handlers}>
+      <div className="relative min-h-0 flex-1" {...drop.handlers}>
+        <div className="absolute inset-0 flex flex-col">
           <div className="relative min-h-0 flex-1">
             <Viewport />
-            <div className="absolute left-3 top-3 w-56 rounded-lg border border-white/10 bg-neutral-900/90 backdrop-blur">
-              <LayersPanel />
-            </div>
             {drop.over && (
               <div className="pointer-events-none absolute inset-3 z-30 flex items-center justify-center rounded-xl border-2 border-dashed border-[var(--accent)] bg-black/50 text-sm text-neutral-100">
                 Drop to import: models, images, videos, HDRI maps, fonts
@@ -75,9 +72,19 @@ export default function Editor() {
               </div>
             )}
           </div>
-          {timelineOpen && <Timeline />}
+          {timelineOpen && (
+            <div className="shrink-0" style={{ paddingLeft: LEFT_INSET, paddingRight: RIGHT_INSET, paddingBottom: GAP }}>
+              <Timeline />
+            </div>
+          )}
         </div>
-        <aside className="flex w-80 flex-col border-l border-white/5 bg-neutral-900">
+        <div className="absolute z-20" style={{ left: GAP, top: GAP }}>
+          <ToolRail />
+        </div>
+        <div className={`absolute z-20 w-56 ${CARD}`} style={{ left: GAP + RAIL_WIDTH + GAP, top: GAP }}>
+          <LayersPanel />
+        </div>
+        <aside className={`absolute z-20 flex w-80 flex-col overflow-hidden ${CARD}`} style={{ right: GAP, top: GAP, bottom: GAP }}>
           <nav className="flex border-b border-white/5">
             {panels.map((p) => (
               <button

@@ -35,8 +35,12 @@ production, `/api/fonts` fonctionne partout.
 - `src/editor/components` : `Viewport.tsx` (Canvas R3F), `objects/` (meshes), `panels/` (UI), `ui.tsx` (primitives).
 
 ## Interface
-Disposition d'origine, sombre et neutre : rail d'outils à gauche, calques en carte sur le viewport,
-panneau à onglets à droite. Les onglets suivent trois niveaux : **Object** (la sélection),
+Disposition d'origine, sombre et neutre, devenue **flottante** à la demande de l'utilisateur : le
+viewport occupe tout l'écran sous la barre, et le rail d'outils, la carte des calques, le panneau
+à onglets et la timeline sont des cartes arrondies détachées des bords (`components/layout.ts` :
+`GAP`, `RAIL_WIDTH`, `PANEL_WIDTH`, `LEFT_INSET`, `RIGHT_INSET`, `CARD`). L'image est ajustée
+dans la pièce que les cartes laissent libre, jamais sous elles ; les pastilles du bas et l'avis de
+vue libre se centrent sur cette pièce (`CENTRE_SHIFT`). Un nouveau projet s'ouvre en 16:9. Les onglets suivent trois niveaux : **Object** (la sélection),
 **Material ou Effects** (un seul emplacement, nommé selon la sélection : un solide a une matière,
 une image ou vidéo a des effets, il n'y a donc jamais d'onglet mort), **Scene** (lumière,
 environnement, caméra ; le mot Staging du concurrent n'est plus employé), **Look** (les effets sur
