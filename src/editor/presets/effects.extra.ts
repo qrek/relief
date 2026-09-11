@@ -10,7 +10,6 @@ const n = (key: string, label: string, min: number, max: number, step: number, d
   default: def,
 });
 
-const SPEED = n("speed", "Speed", 0, 4, 0.01, 0);
 
 // ---------------------------------------------------------------------------
 // Colour and print
@@ -39,7 +38,7 @@ export const extraColour: EffectDef[] = [
     id: "hue",
     name: "Hue Shift",
     category: "Colour",
-    params: [n("shift", "Shift", 0, 1, 0.005, 0.15), n("range", "Only near", 0, 1, 0.01, 0), SPEED],
+    params: [n("shift", "Shift", 0, 1, 0.005, 0.15), n("range", "Only near", 0, 1, 0.01, 0)],
     colors: [],
     glsl: /* glsl */ `
       vec3 hsv = rgb2hsv(col.rgb);
@@ -91,7 +90,6 @@ export const extraColour: EffectDef[] = [
       n("count", "Lines", 40, 900, 1, 320),
       n("amount", "Depth", 0, 1, 0.01, 0.45),
       n("roll", "Roll", 0, 1, 0.01, 0),
-      SPEED,
     ],
     colors: [],
     glsl: /* glsl */ `
@@ -312,7 +310,7 @@ export const extraDistort: EffectDef[] = [
     id: "spiral",
     name: "Spiral",
     category: "Distort",
-    params: [n("turns", "Turns", -6, 6, 0.01, 2), n("zoom", "Zoom", 0.3, 3, 0.01, 1), SPEED],
+    params: [n("turns", "Turns", -6, 6, 0.01, 2), n("zoom", "Zoom", 0.3, 3, 0.01, 1)],
     colors: [],
     glsl: /* glsl */ `
       vec2 asp = vec2(uAspect, 1.0);
@@ -331,7 +329,6 @@ export const extraDistort: EffectDef[] = [
       n("count", "Slices", 2, 60, 1, 12),
       n("amount", "Offset", 0, 0.6, 0.005, 0.12),
       n("axis", "Axis", 0, 1, 1, 0),
-      SPEED,
     ],
     colors: [],
     glsl: /* glsl */ `
@@ -347,7 +344,7 @@ export const extraDistort: EffectDef[] = [
     id: "cells",
     name: "Cells",
     category: "Distort",
-    params: [n("scale", "Cells", 3, 90, 1, 22), n("jitter", "Irregular", 0, 1, 0.01, 0.8), SPEED],
+    params: [n("scale", "Cells", 3, 90, 1, 22), n("jitter", "Irregular", 0, 1, 0.01, 0.8)],
     colors: [],
     glsl: /* glsl */ `
       vec2 asp = vec2(uAspect, 1.0);
@@ -365,7 +362,6 @@ export const extraDistort: EffectDef[] = [
       n("scale", "Shards", 3, 60, 1, 14),
       n("amount", "Spread", 0, 0.4, 0.005, 0.08),
       n("jitter", "Irregular", 0, 1, 0.01, 0.9),
-      SPEED,
     ],
     colors: [],
     glsl: /* glsl */ `
@@ -386,7 +382,6 @@ export const extraDistort: EffectDef[] = [
       n("scale", "Density", 3, 60, 1, 16),
       n("amount", "Refraction", 0, 0.3, 0.002, 0.06),
       n("size", "Size", 0.1, 0.9, 0.01, 0.45),
-      SPEED,
     ],
     colors: [],
     glsl: /* glsl */ `
@@ -413,7 +408,6 @@ export const extraDistort: EffectDef[] = [
       n("scale", "Flow scale", 0.5, 12, 0.1, 3),
       n("length", "Length", 0, 120, 1, 40),
       n("amount", "Strength", 0, 1, 0.01, 0.6),
-      SPEED,
     ],
     colors: [],
     glsl: /* glsl */ `

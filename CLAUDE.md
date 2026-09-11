@@ -106,11 +106,13 @@ complet du côté.
 `lib/clock.ts` est la seule source de temps. En direct elle suit le temps réel ; pendant un export
 vidéo elle est épinglée sur des temps d'image exacts, ce qui rend chaque frame déterministe.
 
-Tout ce qui bouge est **périodique de période 1/vitesse**, pour qu'un clip de cette durée boucle
-sans raccord. Le mouvement des objets utilise `sin(TAU * vitesse * t)`. Les effets reçoivent
-`uTime` déjà converti en **angle** (`TAU * vitesse * t`) : un shader animé doit donc être écrit
-périodique en `uTime` de période `TAU`. Pour le bruit, on parcourt un cercle
-(`vec2(cos(uTime), sin(uTime))`) plutôt que de dériver linéairement.
+Le mouvement des objets (Motion) est **périodique de période 1/vitesse** sur le temps live, avec
+`sin(TAU * vitesse * t)`. Les effets, eux, n'ont **plus de vitesse** : ils reçoivent `uTime` en
+**angle**, `TAU × (position de la tête de lecture dans le clip)`, soit un tour complet sur la durée
+du clip. Un shader animé doit donc être écrit périodique en `uTime` de période `TAU`, et il boucle
+par construction sur le clip ; où il en est se décide dans la timeline, comme une clé. Pour le
+bruit, on parcourt un cercle (`vec2(cos(uTime), sin(uTime))`) plutôt que de dériver linéairement.
+`isAnimated(def)` regarde simplement si le shader lit `uTime`.
 
 Le mouvement s'applique sur un groupe interne, pas sur le groupe transformé par le gizmo.
 

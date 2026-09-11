@@ -76,7 +76,7 @@ function CoverMedia({ obj }: { obj: CoverObject }) {
         if (!instance.enabled) return false;
         if (hasKeys(instance.keys)) return true;
         const def = effectById(instance.effectId);
-        return def ? isAnimated(def, instance.params) : false;
+        return def ? isAnimated(def) : false;
       }),
     [obj.effects],
   );
@@ -95,7 +95,7 @@ function CoverMedia({ obj }: { obj: CoverObject }) {
     if (mat && (signature !== lastSignature.current || animated || isVideo)) {
       lastSignature.current = signature;
       // Sizes are in pixels of the media itself, whether or not the chain runs it smaller.
-      mat.map = chain.render(gl, media.texture, obj.effects, sceneClock.time, target.width, target.height, target.height / Math.max(1, media.height));
+      mat.map = chain.render(gl, media.texture, obj.effects, sceneClock.clipTime / sceneClock.duration, target.width, target.height, target.height / Math.max(1, media.height));
     }
 
     // A backdrop rides with the camera and fills the frame. Its world matrix is

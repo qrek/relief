@@ -974,7 +974,7 @@ function SceneRenderer({
       };
       // The look stays on while the camera moves: it is the picture, not a polish
       // on it, and a print that flickered back to a render would be disorienting.
-      if (finish) look.render(gl, drawScene, staging.look, sceneClock.time, referenceHeight, size);
+      if (finish) look.render(gl, drawScene, staging.look, sceneClock.clipTime / sceneClock.duration, referenceHeight, size);
       else drawScene();
     };
 

@@ -28,8 +28,6 @@ const n = (key: string, label: string, min: number, max: number, step: number, d
   default: def,
 });
 
-/** Every effect that animates exposes the same speed knob; zero freezes it. */
-const SPEED = n("speed", "Speed", 0, 4, 0.01, 0);
 
 /** Shared helpers compiled into every pass. */
 export const GLSL_PREAMBLE = /* glsl */ `
@@ -385,7 +383,7 @@ const colour: EffectDef[] = [
     id: "grain",
     name: "Grain",
     category: "Colour",
-    params: [n("amount", "Amount", 0, 0.6, 0.005, 0.12), n("size", "Size", 0.3, 4, 0.05, 1), SPEED],
+    params: [n("amount", "Amount", 0, 0.6, 0.005, 0.12), n("size", "Size", 0.3, 4, 0.05, 1)],
     colors: [],
     glsl: /* glsl */ `
       // 24 discrete states per cycle keeps the grain periodic, so a loop has no jump.
@@ -562,7 +560,6 @@ const distort: EffectDef[] = [
       n("freq", "Frequency", 1, 60, 0.5, 12),
       n("amp", "Amplitude", 0, 1, 0.005, 0.2),
       n("cross", "Cross", 0, 1, 0.01, 0.3),
-      SPEED,
     ],
     colors: [],
     glsl: /* glsl */ `
@@ -579,7 +576,6 @@ const distort: EffectDef[] = [
       n("freq", "Frequency", 2, 90, 0.5, 28),
       n("amp", "Amplitude", 0, 1, 0.005, 0.18),
       n("falloff", "Falloff", 0, 3, 0.01, 0.8),
-      SPEED,
     ],
     colors: [],
     glsl: /* glsl */ `
@@ -597,7 +593,6 @@ const distort: EffectDef[] = [
     params: [
       n("amount", "Amount", -6, 6, 0.01, 2),
       n("radius", "Radius", 0.05, 1.4, 0.01, 0.6),
-      SPEED,
     ],
     colors: [],
     glsl: /* glsl */ `
@@ -617,7 +612,6 @@ const distort: EffectDef[] = [
       n("sides", "Segments", 2, 24, 1, 6),
       n("rotate", "Rotate", 0, 6.2832, 0.01, 0),
       n("zoom", "Zoom", 0.2, 3, 0.01, 1),
-      SPEED,
     ],
     colors: [],
     glsl: /* glsl */ `
@@ -677,7 +671,6 @@ const distort: EffectDef[] = [
     params: [
       n("amount", "Amount", 0, 1, 0.005, 0.25),
       n("scale", "Scale", 0.5, 12, 0.1, 3),
-      SPEED,
     ],
     colors: [],
     glsl: /* glsl */ `
@@ -698,7 +691,6 @@ const distort: EffectDef[] = [
       n("amount", "Amount", 0, 1, 0.01, 0.4),
       n("bands", "Bands", 4, 120, 1, 28),
       n("shift", "RGB shift", 0, 1, 0.01, 0.4),
-      n("speed", "Speed", 0, 4, 0.01, 1),
     ],
     colors: [],
     glsl: /* glsl */ `
@@ -794,7 +786,7 @@ export function defaultEffectColors(def: EffectDef): Record<string, string> {
 }
 
 /** True when the effect's current settings make it move over time. */
-export function isAnimated(def: EffectDef, params: Record<string, number>): boolean {
-  const speed = params.speed ?? def.params.find((p) => p.key === "speed")?.default ?? 0;
-  return def.params.some((p) => p.key === "speed") && speed > 0.001;
+/** An effect that reads the clock changes as the playhead moves, so its cover has to re-render each frame. */
+export function isAnimated(def: EffectDef): boolean {
+  return def.glsl.includes("uTime");
 }

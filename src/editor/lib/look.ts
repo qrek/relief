@@ -153,7 +153,8 @@ export class LookPass {
     renderer: THREE.WebGLRenderer,
     drawScene: () => void,
     look: EffectInstance[],
-    time: number,
+    /** Where in the clip the frame is, in turns: 0 at the start, 1 at the end. */
+    phase: number,
     /** Height in pixels of the frame being made, so effect sizes read as export pixels. */
     referenceHeight: number,
     /** Size of the picture in buffer pixels; the whole drawing buffer when omitted. */
@@ -174,7 +175,7 @@ export class LookPass {
     this.draw(renderer, this.develop, developed);
 
     const frameScale = this.height / Math.max(1, referenceHeight);
-    const result = this.chain.render(renderer, developed.texture, look, time, this.width, this.height, frameScale);
+    const result = this.chain.render(renderer, developed.texture, look, phase, this.width, this.height, frameScale);
 
     this.copy.uniforms.uSource.value = result;
     this.draw(renderer, this.copy, null);

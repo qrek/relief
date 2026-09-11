@@ -19,7 +19,8 @@ import { sceneClock } from "./clock";
 import { hideEditorHelpers } from "./export";
 import { motionPeriod } from "../presets/motion";
 import { hasKeys } from "./keyframes";
-import type { Project } from "../types";
+import type { EffectInstance, Project } from "../types";
+import { effectById, isAnimated } from "../presets/effects";
 
 export type VideoFormat = "mp4" | "webm";
 export type VideoQuality = "low" | "medium" | "high" | "very-high";
@@ -154,16 +155,16 @@ function scenePeriods(project: Project): number[] {
   for (const object of project.objects) {
     const motion = motionPeriod(object.motion);
     if (motion !== null && Number.isFinite(motion) && motion > 0) periods.push(motion);
-    if (object.kind !== "cover") continue;
-    for (const effect of object.effects) {
-      const speed = effect.params.speed;
-      if (effect.enabled && typeof speed === "number" && speed > 0.001) periods.push(1 / speed);
-    }
   }
-  // Keyframes live in the clip, so the clip is a cycle of its own.
+  // Keyframes and animated effects live in the clip, so the clip is a cycle of its own.
+  const onClip = (e: EffectInstance) => {
+    const def = effectById(e.effectId);
+    return e.enabled && ((def ? isAnimated(def) : false) || hasKeys(e.keys));
+  };
   const keyed =
-    project.objects.some((o) => hasKeys(o.keys) || (o.kind === "cover" && o.effects.some((e) => hasKeys(e.keys)))) ||
-    project.staging.look.some((e) => hasKeys(e.keys));
+    hasKeys(project.camera.keys) ||
+    project.objects.some((o) => hasKeys(o.keys) || (o.kind === "cover" && o.effects.some(onClip))) ||
+    project.staging.look.some(onClip);
   if (keyed) periods.push(project.clip.duration);
   return periods;
 }

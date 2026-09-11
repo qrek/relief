@@ -338,7 +338,8 @@ export class EffectChain {
     renderer: THREE.WebGLRenderer,
     source: THREE.Texture,
     effects: EffectInstance[],
-    time: number,
+    /** Where in the clip the frame is, in turns: 0 at the start, 1 at the end. */
+    phase: number,
     width: number,
     height: number,
     /**
@@ -380,11 +381,10 @@ export class EffectChain {
       mat.uniforms.uResolution.value.set(w, h);
       mat.uniforms.uAspect.value = w / h;
       mat.uniforms.uFrame.value = frameScale;
-      // Time reaches the shaders as an angle in radians, one full turn per cycle.
-      // Every animated effect is written to be periodic in it, so a clip lasting
-      // 1/speed seconds loops without a seam.
-      const speed = params.speed ?? 1;
-      mat.uniforms.uTime.value = TAU * speed * time;
+      // Time reaches the shaders as an angle in radians: one full turn over
+      // the clip. Every animated effect is written to be periodic in it, so
+      // the clip loops without a seam, and the playhead decides where it is.
+      mat.uniforms.uTime.value = TAU * phase;
       for (const p of def.params) {
         mat.uniforms[`p_${p.key}`].value = params[p.key] ?? p.default;
       }
