@@ -92,7 +92,8 @@ function CoverMedia({ obj }: { obj: CoverObject }) {
     const mat = material.current;
     if (mat && (signature !== lastSignature.current || animated || isVideo)) {
       lastSignature.current = signature;
-      mat.map = chain.render(gl, media.texture, obj.effects, sceneClock.time, target.width, target.height);
+      // Sizes are in pixels of the media itself, whether or not the chain runs it smaller.
+      mat.map = chain.render(gl, media.texture, obj.effects, sceneClock.time, target.width, target.height, target.height / Math.max(1, media.height));
     }
 
     // A backdrop rides with the camera and fills the frame. Its world matrix is

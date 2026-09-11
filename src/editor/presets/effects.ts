@@ -12,7 +12,9 @@ export type EffectDef = {
   /**
    * Fragment body. It receives `uv` (mutable), `col` (mutable, pre-sampled),
    * `uTime`, `uResolution`, `uAspect` and the source sampler `uMap`.
-   * Numeric params arrive as `p_<key>`, colours as `c_<key>`.
+   * Numeric params arrive as `p_<key>`, colours as `c_<key>`. A size in
+   * pixels means pixels of the export: multiply it by `uFrame` before
+   * dividing by `uResolution`, so the screen agrees with the file.
    */
   glsl: string;
 };
@@ -373,7 +375,7 @@ const colour: EffectDef[] = [
     ],
     glsl: /* glsl */ `
       float l = luma(texture2D(uMap, uv + vec2(p_offset, -p_offset)).rgb);
-      float g = (vnoise(uv * uResolution.y * 0.7) - 0.5) * p_grain;
+      float g = (vnoise(uv * uResolution.y * 0.7 / uFrame) - 0.5) * p_grain;
       float lv = max(2.0, floor(p_levels));
       float q = floor(clamp(l + g, 0.0, 1.0) * lv + 0.5) / lv;
       col.rgb = mix(c_dark, c_light, q);
@@ -388,7 +390,7 @@ const colour: EffectDef[] = [
     glsl: /* glsl */ `
       // 24 discrete states per cycle keeps the grain periodic, so a loop has no jump.
       float frame = floor(fract(uTime / 6.2831853) * 24.0);
-      float g = hash21(floor(uv * uResolution / max(0.3, p_size)) + frame) - 0.5;
+      float g = hash21(floor(uv * uResolution / (max(0.3, p_size) * uFrame)) + frame) - 0.5;
       col.rgb += g * p_amount;
     `,
   },
@@ -402,7 +404,7 @@ const colour: EffectDef[] = [
       { key: "edge", label: "Edge", default: "#ffffff" },
     ],
     glsl: /* glsl */ `
-      vec2 px = p_width / uResolution;
+      vec2 px = p_width * uFrame / uResolution;
       float tl = luma(texture2D(uMap, uv + px * vec2(-1.0,  1.0)).rgb);
       float tm = luma(texture2D(uMap, uv + px * vec2( 0.0,  1.0)).rgb);
       float tr = luma(texture2D(uMap, uv + px * vec2( 1.0,  1.0)).rgb);
@@ -446,7 +448,7 @@ const optical: EffectDef[] = [
     params: [n("radius", "Radius", 0, 24, 0.1, 4)],
     colors: [],
     glsl: /* glsl */ `
-      vec2 px = p_radius / uResolution;
+      vec2 px = p_radius * uFrame / uResolution;
       vec4 sum = vec4(0.0);
       float wsum = 0.0;
       for (int i = -4; i <= 4; i++) {
@@ -474,7 +476,7 @@ const optical: EffectDef[] = [
     // (see lib/effectChain.ts), which is what a glow needs to spread wide and
     // stay smooth. A single pass at a fixed radius can do neither.
     glsl: /* glsl */ `
-      vec2 px = p_radius / uResolution;
+      vec2 px = p_radius * uFrame / uResolution;
       vec3 sum = vec3(0.0);
       float wsum = 0.0;
       for (int i = -4; i <= 4; i++) {
@@ -724,7 +726,7 @@ const distort: EffectDef[] = [
     ],
     colors: [],
     glsl: /* glsl */ `
-      vec2 dir = vec2(cos(p_angle), sin(p_angle)) / uResolution * p_length;
+      vec2 dir = vec2(cos(p_angle), sin(p_angle)) * uFrame / uResolution * p_length;
       vec4 acc = col;
       float w = 1.0;
       for (int i = 1; i <= 16; i++) {

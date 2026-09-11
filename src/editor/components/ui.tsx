@@ -55,14 +55,14 @@ export function Section({
   children,
   right,
 }: {
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   right?: ReactNode;
 }) {
   return (
     <div className="border-b border-white/5 px-3 py-3">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">{title}</h3>
+        <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">{title}</h3>
         {right}
       </div>
       <div className="flex flex-col gap-2">{children}</div>

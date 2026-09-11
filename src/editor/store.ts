@@ -325,6 +325,8 @@ export function effectiveMaterial(obj: SceneObject, partId: string | null): Part
   return { material: obj.material, materialPresetId: obj.materialPresetId };
 }
 
+export type ViewMode = "camera" | "free" | "split";
+
 type EditorState = {
   project: Project;
   selectedId: string | null;
@@ -336,11 +338,11 @@ type EditorState = {
   /** Shows the platform margins guide over the canvas. */
   safeAreas: boolean;
   /**
-   * True when the viewport looks through the shot camera, framed to the
-   * format. False is the free view: orbit anywhere around the set, with the
-   * camera drawn as an object in it.
+   * How the viewport looks at the set. `camera` looks through the shot camera,
+   * framed to the format. `free` orbits anywhere, with the camera drawn as an
+   * object in the set. `split` shows both side by side.
    */
-  cameraView: boolean;
+  viewMode: ViewMode;
   /** A reference grid on the floor, never exported. */
   showGrid: boolean;
   /** The light whose marker is selected in the viewport, if any. */
@@ -355,7 +357,7 @@ type EditorState = {
   setQuality: (q: Quality) => void;
   setLibrary: (l: LibraryId) => void;
   setSafeAreas: (v: boolean) => void;
-  setCameraView: (v: boolean) => void;
+  setViewMode: (m: ViewMode) => void;
   setShowGrid: (v: boolean) => void;
   selectLight: (id: string | null) => void;
   setLight: (id: string, patch: Partial<SceneLight>, coalesce?: boolean) => void;
@@ -446,7 +448,7 @@ export const useEditor = create<EditorState>()(
         quality: "balanced",
         library: null,
         safeAreas: false,
-        cameraView: true,
+        viewMode: "camera",
         showGrid: false,
         selectedLightId: null,
         past: [],
@@ -460,7 +462,7 @@ export const useEditor = create<EditorState>()(
         setQuality: (quality) => set({ quality }),
         setLibrary: (library) => set({ library }),
         setSafeAreas: (safeAreas) => set({ safeAreas }),
-        setCameraView: (cameraView) => set({ cameraView }),
+        setViewMode: (viewMode) => set({ viewMode }),
         setShowGrid: (showGrid) => set({ showGrid }),
         // A light and an object are never selected together: one gizmo at a time.
         selectLight: (id) =>

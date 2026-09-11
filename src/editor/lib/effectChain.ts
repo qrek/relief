@@ -20,6 +20,9 @@ uniform sampler2D uMap;
 uniform float uTime;
 uniform vec2 uResolution;
 uniform float uAspect;
+// Buffer pixels per pixel of the frame the designer is making: 1 at export
+// size, less on screen. A radius written in export pixels is multiplied by it.
+uniform float uFrame;
 ${params}
 ${colors}
 varying vec2 vUv;
@@ -43,6 +46,7 @@ function materialFor(def: EffectDef): THREE.ShaderMaterial {
     uTime: { value: 0 },
     uResolution: { value: new THREE.Vector2(1, 1) },
     uAspect: { value: 1 },
+    uFrame: { value: 1 },
   };
   for (const p of def.params) uniforms[`p_${p.key}`] = { value: p.default };
   for (const c of def.colors) uniforms[`c_${c.key}`] = { value: new THREE.Color(c.default) };
@@ -231,10 +235,13 @@ class BloomStage {
     width: number,
     height: number,
     out: THREE.WebGLRenderTarget,
+    frameScale = 1,
   ) {
     this.ensure(width, height);
-    // Spread runs 1 to 30; each level doubles the reach, so the count follows its log.
-    const spread = params.radius ?? 12;
+    // Spread runs 1 to 30 in export pixels; each level doubles the reach, so
+    // the count follows its log, and a smaller buffer stops a level earlier so
+    // the glow covers the same share of the frame.
+    const spread = (params.radius ?? 12) * frameScale;
     const levels = Math.max(2, Math.min(this.downs.length, Math.round(1.5 + Math.log2(Math.max(1, spread)))));
 
     const pre = this.prefilter.uniforms;
@@ -332,6 +339,12 @@ export class EffectChain {
     time: number,
     width: number,
     height: number,
+    /**
+     * Buffer pixels per pixel of the finished frame. Every radius and grain in
+     * the effects is written in pixels of the export, so the picture on screen
+     * matches the file, whatever size the canvas happens to be.
+     */
+    frameScale = 1,
   ): THREE.Texture {
     const active = effects.filter((e) => e.enabled && effectById(e.effectId));
     if (active.length === 0) return source;
@@ -351,7 +364,7 @@ export class EffectChain {
       if (def.id === "bloom") {
         this.bloom ??= new BloomStage();
         const target = this.targets[slot];
-        this.bloom.render(renderer, input, instance.params, w, h, target);
+        this.bloom.render(renderer, input, instance.params, w, h, target, frameScale);
         input = target.texture;
         slot = 1 - slot;
         continue;
@@ -361,6 +374,7 @@ export class EffectChain {
       mat.uniforms.uMap.value = input;
       mat.uniforms.uResolution.value.set(w, h);
       mat.uniforms.uAspect.value = w / h;
+      mat.uniforms.uFrame.value = frameScale;
       // Time reaches the shaders as an angle in radians, one full turn per cycle.
       // Every animated effect is written to be periodic in it, so a clip lasting
       // 1/speed seconds loops without a seam.

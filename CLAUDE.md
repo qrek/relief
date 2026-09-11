@@ -141,7 +141,23 @@ dessinée dans une cible, développée (tone mapping puis transfert sRGB, à la 
 dessus via `EffectChain`, et le résultat est recopié tel quel sur le canvas.
 
 Les actions d'effets du store prennent un id de propriétaire : l'id d'un cover, ou `LOOK_ID`
-pour le look. Le même panneau `EffectStack` sert les deux.
+pour le look. Le même panneau `EffectStack` sert les deux. L'onglet Look s'ouvre sur la galerie
+(`showcase`) tant que la pile est vide : les effets sont l'argument du produit, ils se voient avant
+de se lire.
+
+**Les tailles d'effet sont en pixels de l'export**, pas de l'écran. Chaque passe reçoit `uFrame`,
+le nombre de pixels du tampon par pixel de l'image finie (hauteur du tampon divisée par la hauteur
+du format pour le look, par la hauteur native du média pour un cover). Un rayon, un grain, une
+traînée se multiplient par `uFrame` avant de se diviser par `uResolution` ; la pyramide de Bloom
+perd un niveau quand le tampon est plus petit. Avant ça, changer de format ou de taille de fenêtre
+changeait le grain et le flou à l'écran, et l'écran ne ressemblait pas au fichier. Le plafond de
+flou de la profondeur de champ (`maxBlur`) suit la même règle via `referenceHeight`.
+
+**Vignettes d'effets** (`lib/effectThumbs.ts`) : chaque effet est prévisualisé par lui-même, sur une
+petite scène fixe (un nœud bleu brillant, une bille orange émissive, fond gris moyen) rendue par
+`LookPass` dans un renderer hors écran, une vignette par tick de `setTimeout` (pas `rAF`, qu'un
+onglet en arrière-plan bride), puis gardée en mémoire. Un fond gris, pas papier : une lueur et une
+traînée doivent se voir, une trame aussi.
 
 Deux leçons de shader qui complètent celles de la profondeur de champ :
 - Une passe qui dessine **toujours** dans une cible ne reçoit pas les fonctions de tone mapping
@@ -194,14 +210,30 @@ objets et sur un sol invisible en `shadowMaterial` (`shadowCatcher`) à `floorY`
 L'environnement est un preset drei ou `asset:<id>` pour une carte importée (`.hdr`, `.exr`, ou une
 image équirectangulaire), stockée comme asset de kind `hdri` et chargée par `lib/hdri.ts`.
 
-## Vue caméra et vue libre
-Le viewport a deux regards, comme Blender. **Vue caméra** (par défaut, touche 0 pour basculer) :
-le canvas est le cadre, taillé au format, et l'orbite déplace la caméra de prise de vue. **Vue
-libre** : le canvas prend toute la zone, un second œil (`runtime.freeView.camera`, hors React, jamais
-persisté) orbite où il veut, et la caméra de prise de vue est dessinée dans le décor par
-`CameraFrame` (corps, quatre rayons, le cadre à la distance de mise au point quand la profondeur
-de champ est active, sinon à la distance de la cible). Aucun flou ni look en vue libre : c'est le
-décor, pas l'image. « Shoot from here » copie l'œil libre dans la caméra de prise de vue.
+## Vue caméra, vue libre, les deux
+`viewMode` dans le store vaut `camera`, `free` ou `split`, comme les regards de Blender. **Vue
+caméra** (par défaut, touche 0 pour basculer avec la libre) : le canvas est le cadre, taillé au
+format, et l'orbite déplace la caméra de prise de vue. **Vue libre** : le canvas prend toute la
+zone, un second œil (`runtime.freeView.camera`, hors React, jamais persisté) orbite où il veut, et
+la caméra de prise de vue est dessinée dans le décor par `CameraFrame` (corps, quatre rayons, le
+cadre à la distance de mise au point quand la profondeur de champ est active, sinon à la distance
+de la cible). Aucun flou ni look en vue libre : c'est le décor, pas l'image. « Shoot from here »
+copie l'œil libre dans la caméra de prise de vue.
+
+**Les deux** (`split`) : un seul canvas, deux viewports GL avec scissor (`lib/viewLayout.ts`
+calcule les deux rectangles, partagés par le rendu, le pointeur et les surcouches DOM). Le décor
+à gauche, l'image à droite ajustée à son format. L'œil libre est une caméra **virtuelle de la
+taille du canvas entier** dont seule la moitié gauche est dessinée (`setViewOffset` au moment du
+rendu) : ainsi les maths de pointeur sur tout le canvas, y compris celles du gizmo de three qui ne
+se paramètrent pas, restent justes. Le volet image mappe le pointeur sur son rectangle et la
+caméra de prise de vue. Chaque moitié a ses OrbitControls, armés au `pointerdown` et au `wheel`
+selon le côté (phase de capture). Les surcouches (`userData.overlay`) sont retirées du volet image :
+il est l'image, pas le décor. Les passes de profondeur de champ et de look acceptent une taille
+explicite pour rendre dans un volet ; `renderer.setRenderTarget(null)` restaure le viewport et le
+scissor courants de three, c'est ce qui rend la chose possible sans les modifier davantage.
+
+`runtime.exporting` est levé par `renderImage` et `renderVideo` : pendant un export, le rendu
+passe toujours par la caméra, quel que soit le regard à l'écran.
 
 La caméra de prise de vue reste la caméra par défaut de R3F (labels, fonds et export la suivent
 quel que soit le regard) mais elle est `manual` : son rapport d'aspect vient du format, pas du

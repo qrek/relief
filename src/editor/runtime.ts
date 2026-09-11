@@ -27,6 +27,8 @@ type RuntimeState = {
    * because it is mutated every frame by the controls and never re-renders anything.
    */
   freeView: { camera: THREE.PerspectiveCamera; target: THREE.Vector3 };
+  /** True while an image or a video is being rendered, so the frame is the picture and nothing else. */
+  exporting: boolean;
   /** True while the camera or a gizmo is being dragged, so the frame can be cheap. */
   interacting: boolean;
   setInteracting: (interacting: boolean) => void;
@@ -70,6 +72,7 @@ export const useRuntime = create<RuntimeState>((set, get) => ({
   focusPicking: false,
   setFocusPicking: (focusPicking) => set({ focusPicking }),
   freeView: { camera: new THREE.PerspectiveCamera(50, 1, 0.1, 500), target: new THREE.Vector3() },
+  exporting: false,
   interacting: false,
   setInteracting: (interacting) => {
     if (get().interacting !== interacting) set({ interacting });

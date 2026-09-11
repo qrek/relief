@@ -205,7 +205,7 @@ function useKeyboardShortcuts() {
           else useRuntime.getState().setFocusPicking(!useRuntime.getState().focusPicking);
           break;
         case "0":
-          s.setCameraView(!s.cameraView);
+          s.setViewMode(s.viewMode === "camera" ? "free" : "camera");
           break;
         case "1":
           s.setActivePanel("object");

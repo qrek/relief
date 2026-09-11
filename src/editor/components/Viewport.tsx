@@ -3,10 +3,11 @@
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls, TransformControls } from "@react-three/drei";
-import { Grid3x3, Video } from "lucide-react";
+import { Columns2, Grid3x3, Orbit, Video } from "lucide-react";
+import { splitLayout } from "../lib/viewLayout";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { currentFormat, useEditor, type Quality } from "../store";
+import { currentFormat, useEditor, type Quality, type ViewMode } from "../store";
 import { useRuntime } from "../runtime";
 import type { Motion, PartInfo, SceneObject, Staging } from "../types";
 import { DepthOfFieldPass, focalToFov } from "../lib/postFx";
@@ -46,7 +47,8 @@ export function Viewport() {
   const project = useEditor((s) => s.project);
   const format = currentFormat(project);
   const quality = useEditor((s) => s.quality);
-  const cameraView = useEditor((s) => s.cameraView);
+  const viewMode = useEditor((s) => s.viewMode);
+  const cameraView = viewMode === "camera";
   const outer = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
@@ -103,8 +105,9 @@ export function Viewport() {
         }}
       >
         {cameraView && <SafeAreaOverlay />}
+        {viewMode === "split" && <SplitOverlay width={size.w} height={size.h} aspect={format.width / format.height} />}
         <FocusPickerHint />
-        {!cameraView && <FreeViewHint />}
+        {!cameraView && <FreeViewHint mode={viewMode} />}
         <Canvas
           // Percentage-closer shadows honour each light's blur radius; the
           // "soft" variant ignores it, so softness would have no effect.
@@ -147,17 +150,17 @@ function FocusPickerHint() {
 }
 
 /** Says which view this is, and offers the way back. */
-function FreeViewHint() {
-  const setCameraView = useEditor((s) => s.setCameraView);
+function FreeViewHint({ mode }: { mode: ViewMode }) {
+  const setViewMode = useEditor((s) => s.setViewMode);
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center">
+    <div className={`pointer-events-none absolute top-4 z-20 flex justify-center ${mode === "split" ? "left-0 w-1/2" : "inset-x-0"}`}>
       <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-neutral-900/90 px-3 py-1 text-[11px] text-neutral-300 ring-1 ring-white/10 backdrop-blur">
-        Free view: the camera is the frame drawn in the set.
+        {mode === "split" ? "The set. The picture is on the right." : "Free view: the camera is the frame drawn in the set."}
         <button
           type="button"
           className="rounded-full bg-white/10 px-2 py-0.5 text-neutral-100 hover:bg-white/20"
-          onClick={() => setCameraView(true)}
-          title="Look through the camera again (0)"
+          onClick={() => setViewMode("camera")}
+          title="Look through the camera only (0)"
         >
           Back to camera
         </button>
@@ -166,10 +169,27 @@ function FreeViewHint() {
   );
 }
 
-/** Camera view, free view, and the grid: how the set is looked at. */
+/** The divider and the picture's frame when the set and the picture share the canvas. */
+function SplitOverlay({ width, height, aspect }: { width: number; height: number; aspect: number }) {
+  if (!width || !height) return null;
+  const { shot, divider } = splitLayout(width, height, aspect);
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10">
+      <div className="absolute inset-y-0 w-px bg-white/10" style={{ left: divider }} />
+      <div
+        className="absolute shadow-2xl shadow-black/60 ring-1 ring-white/10"
+        style={{ left: shot.x, top: shot.y, width: shot.w, height: shot.h }}
+      >
+        <SafeAreaOverlay />
+      </div>
+    </div>
+  );
+}
+
+/** Camera view, free view, both, and the grid: how the set is looked at. */
 function ViewControls() {
-  const cameraView = useEditor((s) => s.cameraView);
-  const setCameraView = useEditor((s) => s.setCameraView);
+  const viewMode = useEditor((s) => s.viewMode);
+  const setViewMode = useEditor((s) => s.setViewMode);
   const showGrid = useEditor((s) => s.showGrid);
   const setShowGrid = useEditor((s) => s.setShowGrid);
   const setCamera = useEditor((s) => s.setCamera);
@@ -187,21 +207,26 @@ function ViewControls() {
       free.target.toArray() as [number, number, number],
     );
     useRuntime.getState().requestCameraReset();
-    setCameraView(true);
+    setViewMode("camera");
   };
+
+  const modes: { id: ViewMode; icon: typeof Video; label: string; title: string }[] = [
+    { id: "camera", icon: Video, label: "Camera", title: "Look through the camera, framed to the format (0)" },
+    { id: "free", icon: Orbit, label: "Free", title: "Orbit freely around the set; the camera is drawn in it (0)" },
+    { id: "split", icon: Columns2, label: "Both", title: "The set on the left, the picture on the right" },
+  ];
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setCameraView(!cameraView)}
-        title={cameraView ? "Leave the camera and orbit freely around the set (0)" : "Look through the camera (0)"}
-        className={pill(cameraView)}
-      >
-        <Video size={12} strokeWidth={1.75} />
-        Camera
-      </button>
-      {!cameraView && (
+      <div className="flex items-center gap-0.5">
+        {modes.map((m) => (
+          <button key={m.id} type="button" onClick={() => setViewMode(m.id)} title={m.title} className={pill(viewMode === m.id)}>
+            <m.icon size={12} strokeWidth={1.75} />
+            {m.label}
+          </button>
+        ))}
+      </div>
+      {viewMode !== "camera" && (
         <button type="button" onClick={shootFromHere} title="Move the camera to this point of view" className={pill(false)}>
           Shoot from here
         </button>
@@ -340,7 +365,8 @@ function SceneContent() {
   );
   const selectedObj3D = useRuntime((s) => (selectedId ? s.objects[selectedId] : undefined));
   const resetSignal = useRuntime((s) => s.resetCameraSignal);
-  const cameraView = useEditor((s) => s.cameraView);
+  const viewMode = useEditor((s) => s.viewMode);
+  const cameraView = viewMode === "camera";
   const showGrid = useEditor((s) => s.showGrid);
   const selectedLightId = useEditor((s) => s.selectedLightId);
   const selectLight = useEditor((s) => s.selectLight);
@@ -349,7 +375,12 @@ function SceneContent() {
   const format = useEditor((s) => currentFormat(s.project));
 
   const { gl, scene, camera, size, setEvents } = useThree();
-  const controls = useRef<OrbitControlsImpl>(null);
+  const shotControls = useRef<OrbitControlsImpl>(null);
+  const freeControls = useRef<OrbitControlsImpl>(null);
+  const layout = useMemo(
+    () => splitLayout(size.width, size.height, format.width / format.height),
+    [size.width, size.height, format.width, format.height],
+  );
 
   // The free view has its own eye. The shot camera stays R3F's default camera,
   // so labels, backdrops and export keep following it whichever view is up.
@@ -397,29 +428,55 @@ function SceneContent() {
     free.updateProjectionMatrix();
   }, [size.width, size.height]);
 
-  // Pointer picking looks through whichever eye is on screen.
+  // Pointer picking looks through whichever eye is under the pointer. In the
+  // split view the free eye is a virtual camera the size of the whole canvas
+  // (only its left half is drawn), so pointer maths over the canvas stay
+  // right for it and for the gizmo; the picture pane maps to the shot camera.
   useEffect(() => {
     setEvents({
       compute: (event, state) => {
+        if (viewMode === "split" && event.offsetX >= layout.divider) {
+          const r = layout.shot;
+          state.pointer.set(((event.offsetX - r.x) / r.w) * 2 - 1, -((event.offsetY - r.y) / r.h) * 2 + 1);
+          state.raycaster.setFromCamera(state.pointer, state.camera);
+          return;
+        }
         state.pointer.set((event.offsetX / state.size.width) * 2 - 1, -(event.offsetY / state.size.height) * 2 + 1);
         state.raycaster.setFromCamera(state.pointer, cameraView ? state.camera : freeCamera);
       },
     });
-  }, [setEvents, cameraView, freeCamera]);
+  }, [setEvents, viewMode, cameraView, freeCamera, layout]);
 
-  // Restore or reset the shot camera. Through the camera the orbit controls
-  // carry it; in the free view it is set straight from the project and the
-  // controls carry the free eye instead, from where it last was.
+  // In the split view each half has its own orbit; the one under the pointer
+  // is the one that answers. Capture phase, so it runs before the controls.
   useEffect(() => {
-    const c = controls.current;
+    if (viewMode !== "split") return;
+    const el = gl.domElement;
+    const arm = (e: PointerEvent | WheelEvent) => {
+      const onShot = e.offsetX >= layout.divider;
+      if (shotControls.current) shotControls.current.enabled = onShot;
+      if (freeControls.current) freeControls.current.enabled = !onShot;
+    };
+    el.addEventListener("pointerdown", arm, true);
+    el.addEventListener("wheel", arm, true);
+    return () => {
+      el.removeEventListener("pointerdown", arm, true);
+      el.removeEventListener("wheel", arm, true);
+    };
+  }, [gl, viewMode, layout]);
+
+  // Restore or reset the shot camera from the project, and the free eye from
+  // where it last was. Through the camera the orbit controls carry the shot
+  // camera between resets; out of it, it follows the project.
+  useEffect(() => {
     camera.position.set(...cameraState.position);
-    if (cameraView) {
-      if (!c) return;
-      c.target.set(...cameraState.target);
-      c.update();
-      return;
-    }
     camera.lookAt(...cameraState.target);
+    const shot = shotControls.current;
+    if (shot) {
+      shot.target.set(...cameraState.target);
+      shot.update();
+    }
+    if (cameraView) return;
     if (!enteredFree.current) {
       // The first time out, start where the camera is and step back a little.
       enteredFree.current = true;
@@ -427,12 +484,14 @@ function SceneContent() {
       freeCamera.position.set(...cameraState.position);
       freeCamera.position.sub(freeTarget).multiplyScalar(1.6).add(freeTarget);
     }
-    if (!c) return;
-    c.target.copy(freeTarget);
-    c.update();
-    // Runs on a reset, on a view switch, and while the free view follows the project camera.
+    const free = freeControls.current;
+    if (free) {
+      free.target.copy(freeTarget);
+      free.update();
+    }
+    // Runs on a reset, on a view switch, and while the set view follows the project camera.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetSignal, cameraView, cameraView ? null : cameraState, freeCamera, freeTarget]);
+  }, [resetSignal, viewMode, cameraView ? null : cameraState, freeCamera, freeTarget]);
 
   const lightSelected = staging.lights.find((l) => l.id === selectedLightId);
   const placeLight = (coalesce: boolean) => {
@@ -443,7 +502,7 @@ function SceneContent() {
   return (
     <>
       <ClockDriver />
-      <SceneRenderer staging={staging} viewCamera={viewCamera} cameraView={cameraView} />
+      <SceneRenderer staging={staging} viewMode={viewMode} freeCamera={freeCamera} layout={layout} />
       {showGrid && (
         <Grid
           position={[0, staging.floorY + 0.002, 0]}
@@ -461,7 +520,7 @@ function SceneContent() {
         />
       )}
       <LightMarkers lights={staging.lights} selectedId={selectedLightId} onSelect={selectLight} bindSelected={setLightObj3D} />
-      {!cameraView && (
+      {viewMode !== "camera" && (
         <CameraFrame
           distance={staging.depthOfField ? staging.focusDistance : Math.hypot(
             cameraState.position[0] - cameraState.target[0],
@@ -528,28 +587,42 @@ function SceneContent() {
         />
       )}
 
-      <OrbitControls
-        key={cameraView ? "camera" : "free"}
-        ref={controls}
-        camera={viewCamera}
-        makeDefault
-        enableDamping
-        dampingFactor={0.1}
-        onStart={() => useRuntime.getState().setInteracting(true)}
-        onEnd={() => {
-          useRuntime.getState().setInteracting(false);
-          const c = controls.current;
-          if (!c) return;
-          if (!cameraView) {
-            freeTarget.copy(c.target);
-            return;
-          }
-          setCamera(
-            camera.position.toArray() as [number, number, number],
-            c.target.toArray() as [number, number, number],
-          );
-        }}
-      />
+      {viewMode !== "free" && (
+        <OrbitControls
+          key="shot"
+          ref={shotControls}
+          camera={camera}
+          makeDefault={cameraView}
+          enableDamping
+          dampingFactor={0.1}
+          onStart={() => useRuntime.getState().setInteracting(true)}
+          onEnd={() => {
+            useRuntime.getState().setInteracting(false);
+            const c = shotControls.current;
+            if (!c) return;
+            setCamera(
+              camera.position.toArray() as [number, number, number],
+              c.target.toArray() as [number, number, number],
+            );
+          }}
+        />
+      )}
+      {viewMode !== "camera" && (
+        <OrbitControls
+          key="free"
+          ref={freeControls}
+          camera={freeCamera}
+          makeDefault
+          enableDamping
+          dampingFactor={0.1}
+          onStart={() => useRuntime.getState().setInteracting(true)}
+          onEnd={() => {
+            useRuntime.getState().setInteracting(false);
+            const c = freeControls.current;
+            if (c) freeTarget.copy(c.target);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -663,16 +736,21 @@ function ClockDriver() {
  */
 function SceneRenderer({
   staging,
-  viewCamera,
-  cameraView,
+  viewMode,
+  freeCamera,
+  layout,
 }: {
   staging: Staging;
-  viewCamera: THREE.PerspectiveCamera;
-  cameraView: boolean;
+  viewMode: ViewMode;
+  freeCamera: THREE.PerspectiveCamera;
+  layout: ReturnType<typeof splitLayout>;
 }) {
   const pass = useMemo(() => new DepthOfFieldPass(), []);
   const look = useMemo(() => new LookPass(), []);
   const quality = useEditor((s) => s.quality);
+  // Effect sizes are written in pixels of the export, so the screen, whatever
+  // its size, shows the same grain and the same glow the file will have.
+  const referenceHeight = useEditor((s) => currentFormat(s.project).height);
   useEffect(
     () => () => {
       pass.dispose();
@@ -681,48 +759,100 @@ function SceneRenderer({
     [pass, look],
   );
 
-  useFrame(({ gl, scene }) => {
-    const camera = viewCamera;
-    // Depth of field is the most expensive thing in the frame and the least
-    // useful mid-drag, when the eye follows motion rather than judging an edge.
-    // Fine keeps it on regardless, for the moment just before an export.
-    // The free view is the set, not the picture: no blur and no look there.
-    const busy = quality !== "fine" && useRuntime.getState().interacting;
-    const blur = cameraView && staging.depthOfField && !busy;
-    const finish = cameraView && lookIsActive(staging.look);
+  const bufferSize = useMemo(() => new THREE.Vector2(), []);
 
-    if (!blur && !finish) {
-      gl.render(scene, camera);
+  useFrame(({ gl, scene, camera }) => {
+    const shot = camera as THREE.PerspectiveCamera;
+    // An export renders through the camera whatever the screen shows.
+    const mode: ViewMode = useRuntime.getState().exporting ? "camera" : viewMode;
+
+    // The free view is the set, not the picture: no blur and no look there.
+    if (mode === "free") {
+      gl.render(scene, freeCamera);
       return;
     }
 
-    // The gizmo must not be blurred or printed with the picture. It is kept
-    // out of the frame and drawn over the finished result at the end.
-    const helpers = hideEditorHelpers(scene, false, { overlaysOnly: true });
-    const drawScene = () => {
-      if (!blur) {
-        gl.render(scene, camera);
-        return;
-      }
-      pass.render(gl, scene, camera as THREE.PerspectiveCamera, {
-        focus: staging.focusDistance,
-        aperture: staging.aperture,
-        focalLength: staging.focalLength,
-        maxBlur: staging.maxBlur,
-        blades: staging.blades,
-        bladeAngle: (staging.bladeAngle * Math.PI) / 180,
-        highlight: staging.bokehHighlight,
-        worldMm: staging.sceneScale,
-      });
+    // Depth of field is the most expensive thing in the frame and the least
+    // useful mid-drag, when the eye follows motion rather than judging an edge.
+    // Fine keeps it on regardless, for the moment just before an export.
+    const busy = quality !== "fine" && useRuntime.getState().interacting;
+    const blur = staging.depthOfField && !busy;
+    const finish = lookIsActive(staging.look);
+
+    // The picture through the camera, finished, into the current viewport.
+    const drawPicture = (size?: { width: number; height: number }) => {
+      const drawScene = () => {
+        if (!blur) {
+          gl.render(scene, shot);
+          return;
+        }
+        pass.render(gl, scene, shot, {
+          focus: staging.focusDistance,
+          aperture: staging.aperture,
+          focalLength: staging.focalLength,
+          maxBlur: staging.maxBlur,
+          blades: staging.blades,
+          bladeAngle: (staging.bladeAngle * Math.PI) / 180,
+          highlight: staging.bokehHighlight,
+          worldMm: staging.sceneScale,
+          referenceHeight,
+          size,
+        });
+      };
+      // The look stays on while the camera moves: it is the picture, not a polish
+      // on it, and a print that flickered back to a render would be disorienting.
+      if (finish) look.render(gl, drawScene, staging.look, sceneClock.time, referenceHeight, size);
+      else drawScene();
     };
 
-    // The look stays on while the camera moves: it is the picture, not a polish
-    // on it, and a print that flickered back to a render would be disorienting.
-    if (finish) look.render(gl, drawScene, staging.look, sceneClock.time);
-    else drawScene();
+    if (mode === "camera") {
+      if (!blur && !finish) {
+        gl.render(scene, shot);
+        return;
+      }
+      // The gizmo must not be blurred or printed with the picture. It is kept
+      // out of the frame and drawn over the finished result at the end.
+      const helpers = hideEditorHelpers(scene, false, { overlaysOnly: true });
+      drawPicture();
+      for (const o of helpers) o.visible = true;
+      drawHelpersOnTop(gl, scene, shot);
+      return;
+    }
 
+    // Split: the set on the left through the free eye, the picture on the
+    // right through the camera, each in its own viewport of the one canvas.
+    const dpr = gl.getPixelRatio();
+    gl.getDrawingBufferSize(bufferSize);
+    const rect = (r: { x: number; y: number; w: number; h: number }) =>
+      [Math.round(r.x * dpr), Math.round(bufferSize.y - (r.y + r.h) * dpr), Math.round(r.w * dpr), Math.round(r.h * dpr)] as const;
+
+    gl.setScissorTest(true);
+    gl.setViewport(0, 0, bufferSize.x, bufferSize.y);
+    gl.setScissor(0, 0, bufferSize.x, bufferSize.y);
+    gl.setClearColor(0x000000, 0);
+    gl.clear(true, true, true);
+
+    // The free eye is a virtual camera the size of the whole canvas; its left
+    // half is what gets drawn, so what the pointer sees and what is drawn agree.
+    const [fx, fy, fw, fh] = rect(layout.free);
+    gl.setViewport(fx, fy, fw, fh);
+    gl.setScissor(fx, fy, fw, fh);
+    freeCamera.setViewOffset(bufferSize.x, bufferSize.y, 0, 0, fw, fh);
+    gl.render(scene, freeCamera);
+    freeCamera.clearViewOffset();
+
+    // The picture pane is the picture: the set's aids stay out of it.
+    const helpers = hideEditorHelpers(scene, false, { overlaysOnly: true });
+    const [sx, sy, sw, sh] = rect(layout.shot);
+    gl.setViewport(sx, sy, sw, sh);
+    gl.setScissor(sx, sy, sw, sh);
+    if (!blur && !finish) gl.render(scene, shot);
+    else drawPicture({ width: sw, height: sh });
     for (const o of helpers) o.visible = true;
-    drawHelpersOnTop(gl, scene, camera);
+
+    gl.setScissorTest(false);
+    gl.setViewport(0, 0, bufferSize.x, bufferSize.y);
+    gl.setScissor(0, 0, bufferSize.x, bufferSize.y);
   }, 1);
 
   return null;

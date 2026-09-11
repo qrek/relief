@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useEditor, useSelectedObject } from "../../store";
+import { effectThumbnail, subscribeEffectThumbnail } from "../../lib/effectThumbs";
 import {
   EFFECTS,
   EFFECT_CATEGORIES,
@@ -9,6 +10,7 @@ import {
   effectById,
 } from "../../presets/effects";
 import type { CoverObject, EffectInstance } from "../../types";
+import type { EffectDef } from "../../presets/effects";
 import { Button, ColorField, IconButton, Section, Slider } from "../ui";
 import { ChevronDown, ChevronUp, Eye, EyeOff, RotateCcw, X } from "lucide-react";
 
@@ -48,14 +50,17 @@ export function EffectStack({
   effects,
   title,
   hint,
+  showcase = false,
 }: {
   ownerId: string;
   effects: EffectInstance[];
   title: string;
   hint?: string;
+  /** Opens with the gallery of effects on show while the stack is empty. */
+  showcase?: boolean;
 }) {
   const addEffect = useEditor((s) => s.addEffect);
-  const [picking, setPicking] = useState(false);
+  const [picking, setPicking] = useState(showcase && effects.length === 0);
   const full = effects.length >= MAX_EFFECTS;
 
   return (
@@ -101,6 +106,26 @@ export function EffectStack({
   );
 }
 
+/** The preview of an effect, rendered by the effect itself; blank until it is ready. */
+function useEffectThumbnail(def: EffectDef): string {
+  const [url, setUrl] = useState(() => effectThumbnail(def));
+  useEffect(() => subscribeEffectThumbnail(def, setUrl), [def]);
+  return url;
+}
+
+function EffectThumb({ def, className }: { def: EffectDef; className: string }) {
+  const url = useEffectThumbnail(def);
+  return (
+    <span className={`block overflow-hidden bg-white/5 ${className}`} aria-hidden>
+      {url && (
+        // The source is a data URL made in the browser; there is nothing for next/image to optimise.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" className="block h-full w-full object-cover" draggable={false} />
+      )}
+    </span>
+  );
+}
+
 function EffectPicker({ onPick }: { onPick: (effectId: string) => void }) {
   const [category, setCategory] = useState<string>(EFFECT_CATEGORIES[0]);
   const list = EFFECTS.filter((e) => e.category === category);
@@ -120,15 +145,17 @@ function EffectPicker({ onPick }: { onPick: (effectId: string) => void }) {
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-1">
+      <div className="grid grid-cols-3 gap-1.5">
         {list.map((e) => (
           <button
             key={e.id}
             type="button"
             onClick={() => onPick(e.id)}
-            className="rounded px-2 py-1.5 text-left text-[11px] text-neutral-300 hover:bg-white/10 hover:text-white"
+            title={`Add ${e.name}`}
+            className="group flex flex-col gap-1 rounded-md p-1 text-left hover:bg-white/10"
           >
-            {e.name}
+            <EffectThumb def={e} className="aspect-[4/3] w-full rounded ring-1 ring-white/10 group-hover:ring-[var(--accent-edge)]" />
+            <span className="truncate px-0.5 text-[10.5px] leading-tight text-neutral-300 group-hover:text-white">{e.name}</span>
           </button>
         ))}
       </div>
@@ -167,7 +194,12 @@ function EffectCard({
 
   return (
     <Section
-      title={`${index + 1}. ${def.name}`}
+      title={
+        <>
+          <EffectThumb def={def} className="h-[18px] w-6 rounded-sm ring-1 ring-white/10" />
+          {`${index + 1}. ${def.name}`}
+        </>
+      }
       right={
         <div className="flex items-center gap-0.5">
           <IconButton icon={ChevronUp} title="Move up" disabled={index === 0} onClick={() => moveEffect(ownerId, instance.id, -1)} />

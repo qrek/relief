@@ -149,9 +149,18 @@ export class LookPass {
    * the canvas. `drawScene` may be a plain render or the depth of field pass;
    * either lands in the bound target because both draw to whatever is current.
    */
-  render(renderer: THREE.WebGLRenderer, drawScene: () => void, look: EffectInstance[], time: number) {
-    const size = renderer.getDrawingBufferSize(new THREE.Vector2());
-    this.ensureTargets(Math.max(2, size.x), Math.max(2, size.y));
+  render(
+    renderer: THREE.WebGLRenderer,
+    drawScene: () => void,
+    look: EffectInstance[],
+    time: number,
+    /** Height in pixels of the frame being made, so effect sizes read as export pixels. */
+    referenceHeight: number,
+    /** Size of the picture in buffer pixels; the whole drawing buffer when omitted. */
+    size?: { width: number; height: number },
+  ) {
+    const bufferSize = size ? new THREE.Vector2(size.width, size.height) : renderer.getDrawingBufferSize(new THREE.Vector2());
+    this.ensureTargets(Math.max(2, bufferSize.x), Math.max(2, bufferSize.y));
     const sceneTarget = this.sceneTarget!;
     const developed = this.developed!;
 
@@ -164,7 +173,8 @@ export class LookPass {
     this.develop.uniforms.toneMappingExposure.value = renderer.toneMappingExposure;
     this.draw(renderer, this.develop, developed);
 
-    const result = this.chain.render(renderer, developed.texture, look, time, this.width, this.height);
+    const frameScale = this.height / Math.max(1, referenceHeight);
+    const result = this.chain.render(renderer, developed.texture, look, time, this.width, this.height, frameScale);
 
     this.copy.uniforms.uSource.value = result;
     this.draw(renderer, this.copy, null);

@@ -99,6 +99,7 @@ export async function renderVideo(opts: VideoExportOptions): Promise<Blob> {
   });
   output.addVideoTrack(source, { frameRate: fps });
 
+  useRuntime.setState({ exporting: true });
   try {
     gl.setPixelRatio(1);
     gl.setSize(width, height, false);
@@ -129,6 +130,7 @@ export async function renderVideo(opts: VideoExportOptions): Promise<Blob> {
     }
     throw err;
   } finally {
+    useRuntime.setState({ exporting: false });
     sceneClock.release();
     for (const o of hidden) o.visible = true;
     gl.setPixelRatio(previousRatio);

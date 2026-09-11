@@ -29,6 +29,7 @@ export function LookPanel() {
         effects={look}
         title="Look"
         hint="Nothing yet. Try Colour halftone with Grain for a print, Bloom with Aberration for a photograph, or Pixelate with Scanlines for a screen."
+        showcase
       />
     </>
   );

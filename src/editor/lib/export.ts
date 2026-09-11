@@ -111,6 +111,8 @@ export async function renderImage(opts: ImageExportOptions): Promise<Blob> {
   const prevAlpha = gl.getClearAlpha();
   const prevAspect = camera.aspect;
   const hidden = hideEditorHelpers(scene, opts.excludeCovers === true);
+  // Whatever view is up on screen, the file is the picture through the camera.
+  useRuntime.setState({ exporting: true });
 
   try {
     gl.setPixelRatio(1);
@@ -128,6 +130,7 @@ export async function renderImage(opts: ImageExportOptions): Promise<Blob> {
     const res = await fetch(dataUrl);
     return await res.blob();
   } finally {
+    useRuntime.setState({ exporting: false });
     for (const o of hidden) o.visible = true;
     scene.background = prevBackground;
     gl.setClearAlpha(prevAlpha);

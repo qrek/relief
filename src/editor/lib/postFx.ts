@@ -576,7 +576,12 @@ export type DepthOfFieldSettings = {
   focus: number;
   aperture: number;
   focalLength: number;
+  /** Ceiling on the blur radius, in pixels of the export. */
   maxBlur: number;
+  /** Height in pixels of the frame being made; the ceiling scales to the buffer from it. */
+  referenceHeight?: number;
+  /** Size of the picture in buffer pixels; the whole drawing buffer when omitted. */
+  size?: { width: number; height: number };
   blades: number;
   bladeAngle: number;
   /** How strongly highlights gather into bokeh discs. */
@@ -756,7 +761,7 @@ export class DepthOfFieldPass {
     u.uFocus.value = settings.focus;
     u.uAperture.value = settings.aperture;
     u.uFocal.value = settings.focalLength;
-    u.uMaxBlur.value = Math.max(1, settings.maxBlur);
+    u.uMaxBlur.value = Math.max(1, settings.maxBlur * (settings.referenceHeight ? this.height / settings.referenceHeight : 1));
     u.uHighlight.value = Math.max(0, settings.highlight);
     u.uWorldMm.value = Math.max(0.1, settings.worldMm);
     (u.uFullResolution.value as THREE.Vector2).set(this.width, this.height);
@@ -774,7 +779,9 @@ export class DepthOfFieldPass {
     camera: THREE.PerspectiveCamera,
     settings: DepthOfFieldSettings,
   ) {
-    const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+    const size = settings.size
+      ? new THREE.Vector2(settings.size.width, settings.size.height)
+      : renderer.getDrawingBufferSize(new THREE.Vector2());
     this.ensureTargets(Math.max(2, size.x), Math.max(2, size.y));
     const sceneTarget = this.sceneTarget!;
     const halfA = this.halfA!;
