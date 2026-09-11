@@ -68,7 +68,16 @@ async function build(assetId: string): Promise<LoadedModel> {
   const asset = await getAsset(assetId);
   if (!asset) throw new Error("Model not found in your library");
   const url = await assetUrl(assetId);
-  const { root, hasAnimations } = await parseFile(url, asset.format);
+  let parsed: Awaited<ReturnType<typeof parseFile>>;
+  try {
+    parsed = await parseFile(url, asset.format);
+  } catch (err) {
+    // The loaders' own messages are parser internals; the designer needs to
+    // know which file, and that the file itself is the problem.
+    console.error(`Could not parse ${asset.name}`, err);
+    throw new Error(`"${asset.name}" could not be read as a .${asset.format} file. It may be damaged, or saved in a variant this importer does not know.`);
+  }
+  const { root, hasAnimations } = parsed;
 
   root.updateMatrixWorld(true);
   const parts: LoadedPart[] = [];
@@ -107,13 +116,19 @@ async function build(assetId: string): Promise<LoadedModel> {
 
 const cache = new Map<string, Promise<LoadedModel>>();
 
+/**
+ * A failed load stays in the cache, rejected. React's `use` re-renders the
+ * component when its promise settles, and if the failure had been forgotten
+ * the re-render would start a fresh load, suspend on it, fail again, and so
+ * on: the object would sit there loading forever and the error would never
+ * reach the boundary. The rejection is dropped when the file is removed or
+ * replaced (`forgetModel`), which is the moment a retry makes sense.
+ */
 export function loadModel(assetId: string): Promise<LoadedModel> {
   let entry = cache.get(assetId);
   if (!entry) {
-    entry = build(assetId).catch((err) => {
-      cache.delete(assetId);
-      throw err;
-    });
+    entry = build(assetId);
+    entry.catch(() => {});
     cache.set(assetId, entry);
   }
   return entry;

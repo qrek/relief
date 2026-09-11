@@ -162,6 +162,7 @@ function useKeyboardShortcuts() {
           // Close whatever is open, outermost first, then drop the selection.
           if (useRuntime.getState().focusPicking) useRuntime.getState().setFocusPicking(false);
           else if (s.library) s.setLibrary(null);
+          else if (s.selectedLightId) s.selectLight(null);
           else if (s.selectedPartId) s.selectPart(null);
           else s.select(null);
           break;
@@ -202,6 +203,9 @@ function useKeyboardShortcuts() {
           // Shift frames the selection; on its own it arms a focus pull.
           if (e.shiftKey) frameSelection();
           else useRuntime.getState().setFocusPicking(!useRuntime.getState().focusPicking);
+          break;
+        case "0":
+          s.setCameraView(!s.cameraView);
           break;
         case "1":
           s.setActivePanel("object");

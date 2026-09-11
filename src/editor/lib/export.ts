@@ -26,17 +26,32 @@ const HELPER_FLAGS = [
   "isTransformControlsPlane",
 ] as const;
 
+/**
+ * An overlay is drawn crisp over the finished frame in the viewport: the gizmo,
+ * the light markers, the camera. Anything else flagged `excludeFromExport`
+ * (the floor grid) is part of the picture on screen, blurred and printed
+ * with it, and simply left out of an export.
+ */
 function isEditorHelper(o: THREE.Object3D): boolean {
   const marked = o as unknown as Record<string, unknown>;
-  return HELPER_FLAGS.some((f) => marked[f] === true) || o.userData?.excludeFromExport === true;
+  return HELPER_FLAGS.some((f) => marked[f] === true) || o.userData?.overlay === true;
+}
+
+function isExcludedFromExport(o: THREE.Object3D): boolean {
+  return isEditorHelper(o) || o.userData?.excludeFromExport === true;
 }
 
 /** Editing aids that belong on screen but never in an exported frame. */
-export function hideEditorHelpers(scene: THREE.Scene, alsoHideCovers = false): THREE.Object3D[] {
+export function hideEditorHelpers(
+  scene: THREE.Scene,
+  alsoHideCovers = false,
+  { overlaysOnly = false }: { overlaysOnly?: boolean } = {},
+): THREE.Object3D[] {
   const hidden: THREE.Object3D[] = [];
+  const hides = overlaysOnly ? isEditorHelper : isExcludedFromExport;
   scene.traverse((o) => {
     if (!o.visible) return;
-    if (isEditorHelper(o) || (alsoHideCovers && o.userData?.isCover === true)) {
+    if (hides(o) || (alsoHideCovers && o.userData?.isCover === true)) {
       o.visible = false;
       hidden.push(o);
     }

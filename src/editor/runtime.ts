@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type * as THREE from "three";
+import * as THREE from "three";
 import type { PartInfo } from "./types";
 
 /** Non-persisted handles to live three.js objects, shared between the canvas and the UI. */
@@ -22,6 +22,11 @@ type RuntimeState = {
   /** While armed, the next click in the viewport pulls focus to what it hits. */
   focusPicking: boolean;
   setFocusPicking: (picking: boolean) => void;
+  /**
+   * The free view's eye and what it orbits around. Lives here, outside React,
+   * because it is mutated every frame by the controls and never re-renders anything.
+   */
+  freeView: { camera: THREE.PerspectiveCamera; target: THREE.Vector3 };
   /** True while the camera or a gizmo is being dragged, so the frame can be cheap. */
   interacting: boolean;
   setInteracting: (interacting: boolean) => void;
@@ -64,6 +69,7 @@ export const useRuntime = create<RuntimeState>((set, get) => ({
   requestCameraReset: () => set((s) => ({ resetCameraSignal: s.resetCameraSignal + 1 })),
   focusPicking: false,
   setFocusPicking: (focusPicking) => set({ focusPicking }),
+  freeView: { camera: new THREE.PerspectiveCamera(50, 1, 0.1, 500), target: new THREE.Vector3() },
   interacting: false,
   setInteracting: (interacting) => {
     if (get().interacting !== interacting) set({ interacting });

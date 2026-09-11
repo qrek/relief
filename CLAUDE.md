@@ -152,8 +152,9 @@ Deux leçons de shader qui complètent celles de la profondeur de champ :
   quantité qui dépend de l'angle, et les plaques d'une trame couleur se retrouvent décalées de
   plusieurs cellules les unes par rapport aux autres.
 
-Les aides d'édition (gizmo) sont retirées de l'image avant la profondeur de champ ou le look, puis
-redessinées par-dessus le résultat par `drawHelpersOnTop`, pour rester nettes et non tramées.
+Les aides d'édition marquées `userData.overlay` (gizmo, marqueurs de lumière, cadre caméra) sont
+retirées de l'image avant la profondeur de champ ou le look, puis redessinées par-dessus le
+résultat par `drawHelpersOnTop`, pour rester nettes et non tramées.
 
 **Bloom** n'est pas une passe comme les autres : `EffectChain` reconnaît son id et exécute une
 pyramide (préfiltre à seuil doux, descente par moitiés, remontée en tente, composition additive)
@@ -167,9 +168,18 @@ la lueur d'un vrai panneau.
 
 ## Lumières, ombres, environnement
 `staging.lights` est une liste de `SceneLight` (soleil, spot, point), chacune placée comme le
-ferait un photographe : azimut, hauteur et distance sur une sphère autour de l'origine, jamais
-par un gizmo. La convention d'azimut est celle de l'unique lumière d'avant (zéro devant le sujet,
-positif à droite) ; `lightPosition()` dans `components/Lights.tsx` en est la seule définition.
+ferait un photographe : azimut, hauteur et distance sur une sphère autour de l'origine, toujours
+braquée sur le sujet. La convention d'azimut est celle de l'unique lumière d'avant (zéro devant le
+sujet, positif à droite) ; `lightPosition()` dans `components/Lights.tsx` en est la seule définition.
+
+Chaque lumière est **dessinée dans le viewport** (`LightMarkers` : disque à rayons pour un soleil,
+cône pour un spot, petite sphère pour un point, toujours tournés vers le sujet). Cliquer un
+marqueur sélectionne la lumière (`selectedLightId` dans le store, exclusif avec la sélection
+d'objet), et le gizmo de translation le déplace : la position lâchée est reconvertie en azimut,
+hauteur et distance par `placementFromPosition`, bornée aux plages des curseurs. Le modèle
+sphérique reste donc la seule vérité ; le gizmo n'est qu'une autre façon de le régler. Le marqueur
+d'un soleil est dessiné à six unités, pas à la distance réelle de la lumière, sinon il serait hors
+de tout écran.
 Les anciens champs `lightColor/Intensity/Azimuth/Elevation` sont migrés en lumière clé par
 `normalizeStaging`, au même endroit, ce qui garde les scènes enregistrées et les templates
 identiques au pixel près (vérifié sur « Like no one »).
@@ -183,6 +193,28 @@ objets et sur un sol invisible en `shadowMaterial` (`shadowCatcher`) à `floorY`
 
 L'environnement est un preset drei ou `asset:<id>` pour une carte importée (`.hdr`, `.exr`, ou une
 image équirectangulaire), stockée comme asset de kind `hdri` et chargée par `lib/hdri.ts`.
+
+## Vue caméra et vue libre
+Le viewport a deux regards, comme Blender. **Vue caméra** (par défaut, touche 0 pour basculer) :
+le canvas est le cadre, taillé au format, et l'orbite déplace la caméra de prise de vue. **Vue
+libre** : le canvas prend toute la zone, un second œil (`runtime.freeView.camera`, hors React, jamais
+persisté) orbite où il veut, et la caméra de prise de vue est dessinée dans le décor par
+`CameraFrame` (corps, quatre rayons, le cadre à la distance de mise au point quand la profondeur
+de champ est active, sinon à la distance de la cible). Aucun flou ni look en vue libre : c'est le
+décor, pas l'image. « Shoot from here » copie l'œil libre dans la caméra de prise de vue.
+
+La caméra de prise de vue reste la caméra par défaut de R3F (labels, fonds et export la suivent
+quel que soit le regard) mais elle est `manual` : son rapport d'aspect vient du format, pas du
+canvas, ce qui n'est la même chose qu'en vue caméra. En vue libre, le raycast des clics passe par
+l'œil libre (`setEvents({ compute })`), et une prise de mise au point mesure la distance depuis la
+caméra de prise de vue, pas depuis l'œil.
+
+Une **grille de repère** (drei `Grid`, au niveau du sol) s'allume dans la barre du bas. Elle porte
+`userData.excludeFromExport` : elle fait partie de l'image à l'écran, floutée et tramée avec elle,
+mais jamais exportée. C'est différent de `userData.overlay` (marqueurs de lumière, cadre caméra,
+gizmo), qui est retiré de l'image avant le flou ou le look puis redessiné net par-dessus par
+`drawHelpersOnTop`. Une aide qui doit être occultée par les objets est dans l'image ; une aide qui
+doit rester lisible est un overlay.
 
 ## Caméra et profondeur de champ
 `lib/postFx.ts` calcule la profondeur de champ sur trois échelles. Ce que chaque pixel voit à
@@ -265,4 +297,5 @@ Shift-clic dans le viewport sélectionne une couche. `effectiveMaterial(obj, par
 - Les géométries procédurales sont normalisées dans un cube de 2 unités ; la taille de l'objet est une échelle.
 - Ajouter un champ à un objet implique de le gérer dans `normalizeProject` **et** de monter `PERSIST_VERSION`, sinon la migration ne s'exécute pas sur les projets déjà enregistrés.
 - L'export vidéo pilote la boucle R3F avec `advance()` de @react-three/fiber, image par image. Le canvas est en `preserveDrawingBuffer` pour que les frames restent lisibles après un await.
-- Ce qui ne doit pas apparaître dans un export porte le flag `userData.excludeFromExport` (voir `lib/export.ts`).
+- Ce qui ne doit pas apparaître dans un export porte le flag `userData.excludeFromExport` (voir `lib/export.ts`) ; ce qui doit en plus rester net par-dessus le flou et le look porte `userData.overlay`.
+- Les modèles importés se chargent par `use(loadModel(id))`. Une promesse **rejetée reste dans le cache** : si on l'oubliait à l'échec, React relancerait un nouveau chargement à chaque rendu, suspendrait dessus, et l'erreur n'atteindrait jamais `ObjectBoundary` (l'objet restait vide sans message). `forgetModel` vide l'entrée quand le fichier est remplacé ou supprimé.

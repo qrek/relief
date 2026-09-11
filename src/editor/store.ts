@@ -335,6 +335,16 @@ type EditorState = {
   library: LibraryId;
   /** Shows the platform margins guide over the canvas. */
   safeAreas: boolean;
+  /**
+   * True when the viewport looks through the shot camera, framed to the
+   * format. False is the free view: orbit anywhere around the set, with the
+   * camera drawn as an object in it.
+   */
+  cameraView: boolean;
+  /** A reference grid on the floor, never exported. */
+  showGrid: boolean;
+  /** The light whose marker is selected in the viewport, if any. */
+  selectedLightId: string | null;
   past: Project[];
   future: Project[];
 
@@ -345,6 +355,10 @@ type EditorState = {
   setQuality: (q: Quality) => void;
   setLibrary: (l: LibraryId) => void;
   setSafeAreas: (v: boolean) => void;
+  setCameraView: (v: boolean) => void;
+  setShowGrid: (v: boolean) => void;
+  selectLight: (id: string | null) => void;
+  setLight: (id: string, patch: Partial<SceneLight>, coalesce?: boolean) => void;
 
   addText: (partial?: Partial<TextObject>) => string;
   addShape: (svg: string, name: string) => string;
@@ -432,16 +446,29 @@ export const useEditor = create<EditorState>()(
         quality: "balanced",
         library: null,
         safeAreas: false,
+        cameraView: true,
+        showGrid: false,
+        selectedLightId: null,
         past: [],
         future: [],
 
-        select: (id, partId = null) => set({ selectedId: id, selectedPartId: id ? partId : null }),
+        select: (id, partId = null) =>
+          set({ selectedId: id, selectedPartId: id ? partId : null, selectedLightId: null }),
         selectPart: (selectedPartId) => set({ selectedPartId }),
         setTransformMode: (transformMode) => set({ transformMode }),
         setActivePanel: (activePanel) => set({ activePanel }),
         setQuality: (quality) => set({ quality }),
         setLibrary: (library) => set({ library }),
         setSafeAreas: (safeAreas) => set({ safeAreas }),
+        setCameraView: (cameraView) => set({ cameraView }),
+        setShowGrid: (showGrid) => set({ showGrid }),
+        // A light and an object are never selected together: one gizmo at a time.
+        selectLight: (id) =>
+          set(id ? { selectedLightId: id, selectedId: null, selectedPartId: null, activePanel: "scene" } : { selectedLightId: null }),
+        setLight: (id, patch, coalesce = true) => {
+          const lights = get().project.staging.lights.map((l) => (l.id === id ? { ...l, ...patch } : l));
+          get().setStaging({ lights }, coalesce);
+        },
 
         addText: (partial) => {
           const obj = createTextObject(partial);

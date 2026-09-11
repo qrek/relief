@@ -18,6 +18,8 @@ export function LightsSection() {
   const lights = useEditor((s) => s.project.staging.lights);
   const castShadows = useEditor((s) => s.project.staging.castShadows);
   const setStaging = useEditor((s) => s.setStaging);
+  const selectedLightId = useEditor((s) => s.selectedLightId);
+  const selectLight = useEditor((s) => s.selectLight);
   const [adding, setAdding] = useState(false);
 
   const commit = (next: SceneLight[], coalesce = false) => setStaging({ lights: next }, coalesce);
@@ -45,7 +47,9 @@ export function LightsSection() {
                   key={t}
                   type="button"
                   onClick={() => {
-                    commit([...lights, createLight(t)]);
+                    const light = createLight(t);
+                    commit([...lights, light]);
+                    selectLight(light.id);
                     setAdding(false);
                   }}
                   className="flex flex-1 items-center justify-center gap-1 rounded bg-white/10 px-2 py-1.5 text-[11px] text-neutral-200 hover:bg-white/15"
@@ -78,6 +82,11 @@ export function LightsSection() {
             No lights: only the environment lights the scene. Add one, or pick a rig.
           </p>
         )}
+        {lights.length > 0 && (
+          <p className="text-[11px] leading-relaxed text-neutral-500">
+            Each light is drawn in the viewport. Click one to select it, drag it to place it; it always aims at the subject. Press 0 to step out of the camera and see the whole set.
+          </p>
+        )}
         {!castShadows && lights.some((l) => l.castShadow) && (
           <p className="text-[11px] leading-relaxed text-neutral-500">
             Cast shadows are off in Shadows below, so no light throws one yet.
@@ -86,8 +95,14 @@ export function LightsSection() {
       </Section>
 
       {lights.map((light, index) => (
-        <Section
+        <div
           key={light.id}
+          onClick={() => {
+            if (selectedLightId !== light.id) selectLight(light.id);
+          }}
+          className={light.id === selectedLightId ? "bg-[var(--accent-soft)] shadow-[inset_2px_0_0_var(--accent)]" : ""}
+        >
+        <Section
           title={`${index + 1}. ${light.name || TYPE_LABEL[light.type]}`}
           right={
             <div className="flex items-center gap-0.5">
@@ -121,7 +136,15 @@ export function LightsSection() {
                 title="Duplicate"
                 onClick={() => commit([...lights, createLight(light.type, { ...light, id: undefined, name: `${light.name} copy` })])}
               />
-              <IconButton icon={X} title="Remove" danger onClick={() => commit(lights.filter((l) => l.id !== light.id))} />
+              <IconButton
+                icon={X}
+                title="Remove"
+                danger
+                onClick={() => {
+                  commit(lights.filter((l) => l.id !== light.id));
+                  if (selectedLightId === light.id) selectLight(null);
+                }}
+              />
             </div>
           }
         >
@@ -194,6 +217,7 @@ export function LightsSection() {
             )}
           </div>
         </Section>
+        </div>
       ))}
     </>
   );
