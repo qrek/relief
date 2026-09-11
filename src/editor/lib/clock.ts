@@ -5,21 +5,27 @@
  */
 class SceneClock {
   private elapsed = 0;
+  private head = 0;
   private pinned: number | null = null;
-  /** Length of the keyframed clip in seconds; the clip time wraps on it. */
+  /** Length of the keyframed clip in seconds; the playhead wraps on it. */
   duration = 4;
-  /** False while the designer has paused the scene to work on a moment of it. */
-  playing = true;
+  /**
+   * Whether the playhead runs. Off until asked, like any timeline: opening a
+   * scene does not start a performance. Looping motion and animated effects
+   * keep their own live time regardless, so the viewport is never frozen.
+   */
+  playing = false;
 
-  /** Seconds the scene should render at right now. */
+  /** Seconds of live time, for looping motion and animated effects. */
   get time(): number {
     return this.pinned ?? this.elapsed;
   }
 
-  /** Where in the clip the scene is: the time, wrapped on the clip's length. */
+  /** Where the playhead is in the clip, for keyframes. */
   get clipTime(): number {
     const d = Math.max(0.01, this.duration);
-    return ((this.time % d) + d) % d;
+    const t = this.pinned ?? this.head;
+    return ((t % d) + d) % d;
   }
 
   get isPinned(): boolean {
@@ -28,12 +34,14 @@ class SceneClock {
 
   /** Called once per frame by the viewport while running live. */
   advance(delta: number) {
-    if (this.pinned === null && this.playing) this.elapsed += delta;
+    if (this.pinned !== null) return;
+    this.elapsed += delta;
+    if (this.playing) this.head = (this.head + delta) % Math.max(0.01, this.duration);
   }
 
-  /** Jumps to a moment of the clip. Motion and effects jump with it, so what is seen is one instant. */
+  /** Moves the playhead. */
   seek(clipTime: number) {
-    this.elapsed = Math.max(0, clipTime);
+    this.head = Math.max(0, clipTime);
   }
 
   play() {
@@ -48,7 +56,7 @@ class SceneClock {
     this.playing = !this.playing;
   }
 
-  /** Pins the clock to an exact time, for frame-by-frame rendering. */
+  /** Pins both clocks to an exact time, for frame-by-frame rendering. */
   pin(time: number) {
     this.pinned = time;
   }
@@ -59,6 +67,7 @@ class SceneClock {
 
   reset() {
     this.elapsed = 0;
+    this.head = 0;
   }
 }
 

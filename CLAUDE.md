@@ -115,8 +115,12 @@ périodique en `uTime` de période `TAU`. Pour le bruit, on parcourt un cercle
 Le mouvement s'applique sur un groupe interne, pas sur le groupe transformé par le gizmo.
 
 ## Keyframes et timeline
-Le projet porte un **clip** (`project.clip.duration`, 4 s par défaut) qui boucle ; l'horloge
-expose `clipTime` (le temps enroulé sur cette durée), `playing`, `seek`, `pause`. Les clés sont
+Le projet porte un **clip** (`project.clip.duration`, 4 s par défaut) qui boucle. L'horloge a
+deux temps : `time`, le temps live qui court toujours (mouvements en boucle, effets animés), et
+`clipTime`, la **tête de lecture**, à zéro et à l'arrêt à l'ouverture comme dans Blender ou After
+Effects, qui n'avance que sur Play (`playing`, `seek`, `pause`). Un export épingle les deux sur le
+temps de l'image. La timeline est un choix : rien n'oblige à s'en servir, et une scène sans clé
+se comporte exactement comme avant. Les clés sont
 **par canal** : `keys: KeyTracks` est un dictionnaire `canal → Key[]` (`{ id, t, v, ease }`, trié
 par temps), avec `position.x` … `scale.z` sur un objet et la clé du paramètre sur un effet. Un canal
 sans clé est absent et suit la valeur ordinaire. `lib/keyframes.ts` échantillonne (angles par le
