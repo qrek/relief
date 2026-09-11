@@ -13,6 +13,13 @@ La spécification complète est dans `FEATURES.md` (section 15 = ordre des phase
 - Les modèles 3D (GLB/GLTF/FBX/OBJ) et les médias (images, vidéos) importés sont stockés en IndexedDB, pas en localStorage.
 - Backend prévu : Supabase (auth, projets, storage) et déploiement Vercel. Pas encore branchés.
 
+## Déploiement
+Le dépôt `qrek/relief` est relié au projet Vercel `relief` (équipe `bacholiertheo-5383s-projects`,
+id `prj_vDAXMYu1Ll9KXrOjZBqFVnfuON1H`) : chaque push sur `main` déploie la production sur
+https://relief-bacholiertheo-5383s-projects.vercel.app. Il n'y a pas encore de backend : un projet
+vit dans le navigateur de la personne qui l'ouvre. La route `/api/dev-snapshot` répond 404 en
+production, `/api/fonts` fonctionne partout.
+
 ## Commandes
 - `npm run dev` : serveur de dev sur http://localhost:3000
 - `npm run build` : build de production (à lancer avant de considérer une feature terminée)
