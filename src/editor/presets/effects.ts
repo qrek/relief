@@ -753,6 +753,23 @@ export const EFFECTS: EffectDef[] = [
 
 export const EFFECT_CATEGORIES = Array.from(new Set(EFFECTS.map((e) => e.category)));
 
+/** One hue per family: warm for colour, blue for optics, violet for distortion, green for alpha. */
+const CATEGORY_HUE: Record<string, number> = { Colour: 30, Optical: 212, Distort: 296, Alpha: 140 };
+
+/**
+ * A colour dot that stands for an effect on its card: the family gives the
+ * hue, the effect's place in the family shifts it, so two effects in the same
+ * stack are told apart at a glance without a picture too small to read.
+ */
+export function effectSwatch(def: EffectDef): string {
+  const family = EFFECTS.filter((e) => e.category === def.category);
+  const i = Math.max(0, family.indexOf(def));
+  const n = Math.max(1, family.length - 1);
+  const hue = (((CATEGORY_HUE[def.category] ?? 0) + (i / n) * 56 - 28) % 360 + 360) % 360;
+  const light = 60 + ((i % 3) - 1) * 9;
+  return `hsl(${hue.toFixed(0)} 78% ${light}%)`;
+}
+
 /**
  * A sanity bound rather than a design limit. Every effect is one more full
  * frame pass, and a cover's stack only reruns when it changes, so a long stack

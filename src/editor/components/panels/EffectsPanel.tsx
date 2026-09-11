@@ -8,6 +8,7 @@ import {
   EFFECT_CATEGORIES,
   MAX_EFFECTS,
   effectById,
+  effectSwatch,
 } from "../../presets/effects";
 import type { CoverObject, EffectInstance } from "../../types";
 import type { EffectDef } from "../../presets/effects";
@@ -126,6 +127,11 @@ function EffectThumb({ def, className }: { def: EffectDef; className: string }) 
   );
 }
 
+/** The colour dot an effect carries on its card and in the gallery. */
+function Swatch({ def }: { def: EffectDef }) {
+  return <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: effectSwatch(def) }} aria-hidden />;
+}
+
 function EffectPicker({ onPick }: { onPick: (effectId: string) => void }) {
   const [category, setCategory] = useState<string>(EFFECT_CATEGORIES[0]);
   const list = EFFECTS.filter((e) => e.category === category);
@@ -145,7 +151,7 @@ function EffectPicker({ onPick }: { onPick: (effectId: string) => void }) {
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-3 gap-1">
         {list.map((e) => (
           <button
             key={e.id}
@@ -155,7 +161,10 @@ function EffectPicker({ onPick }: { onPick: (effectId: string) => void }) {
             className="group flex flex-col gap-1 rounded-md p-1 text-left hover:bg-white/10"
           >
             <EffectThumb def={e} className="aspect-[4/3] w-full rounded ring-1 ring-white/10 group-hover:ring-[var(--accent-edge)]" />
-            <span className="truncate px-0.5 text-[11px] leading-tight text-neutral-300 group-hover:text-white">{e.name}</span>
+            <span className="flex min-w-0 items-center gap-1 px-0.5 text-[10.5px] leading-tight text-neutral-300 group-hover:text-white">
+              <Swatch def={e} />
+              <span className="truncate">{e.name}</span>
+            </span>
           </button>
         ))}
       </div>
@@ -196,7 +205,7 @@ function EffectCard({
     <Section
       title={
         <>
-          <EffectThumb def={def} className="h-6 w-8 rounded-sm ring-1 ring-white/10" />
+          <Swatch def={def} />
           {`${index + 1}. ${def.name}`}
         </>
       }

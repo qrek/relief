@@ -424,21 +424,46 @@ function SceneContent() {
 
   useEffect(() => {
     const free = useRuntime.getState().freeView.camera;
-    free.aspect = size.width / Math.max(1, size.height);
+    // In the split view the free eye fills its own pane, not the canvas.
+    const pane = viewMode === "split" ? layout.free : { w: size.width, h: size.height };
+    free.aspect = pane.w / Math.max(1, pane.h);
     free.updateProjectionMatrix();
-  }, [size.width, size.height]);
+  }, [size.width, size.height, viewMode, layout]);
+
+  // three's gizmo reads the pointer against its element's bounding box and
+  // cannot be told otherwise. In the split view it is handed the canvas seen
+  // through a proxy whose box is the set's pane, so its maths match the pane.
+  const gizmoElement = useMemo(() => {
+    if (viewMode !== "split") return undefined;
+    const el = gl.domElement;
+    const r = layout.free;
+    return new Proxy(el, {
+      get(target, key) {
+        if (key === "getBoundingClientRect") {
+          return () => {
+            const b = target.getBoundingClientRect();
+            const left = b.left + r.x;
+            const top = b.top + r.y;
+            return { left, top, width: r.w, height: r.h, right: left + r.w, bottom: top + r.h, x: left, y: top, toJSON: () => ({}) } as DOMRect;
+          };
+        }
+        const value = Reflect.get(target, key);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+  }, [gl, viewMode, layout]);
 
   // Pointer picking looks through whichever eye is under the pointer. In the
-  // split view the free eye is a virtual camera the size of the whole canvas
-  // (only its left half is drawn), so pointer maths over the canvas stay
-  // right for it and for the gizmo; the picture pane maps to the shot camera.
+  // split view each pane maps the pointer onto its own rectangle and its own
+  // camera.
   useEffect(() => {
     setEvents({
       compute: (event, state) => {
-        if (viewMode === "split" && event.offsetX >= layout.divider) {
-          const r = layout.shot;
+        if (viewMode === "split") {
+          const onShot = event.offsetX >= layout.divider;
+          const r = onShot ? layout.shot : layout.free;
           state.pointer.set(((event.offsetX - r.x) / r.w) * 2 - 1, -((event.offsetY - r.y) / r.h) * 2 + 1);
-          state.raycaster.setFromCamera(state.pointer, state.camera);
+          state.raycaster.setFromCamera(state.pointer, onShot ? state.camera : freeCamera);
           return;
         }
         state.pointer.set((event.offsetX / state.size.width) * 2 - 1, -(event.offsetY / state.size.height) * 2 + 1);
@@ -559,6 +584,7 @@ function SceneContent() {
           object={lightObj3D}
           mode="translate"
           camera={viewCamera}
+          domElement={gizmoElement}
           onMouseDown={() => useRuntime.getState().setInteracting(true)}
           onObjectChange={() => placeLight(true)}
           onMouseUp={() => {
@@ -573,6 +599,7 @@ function SceneContent() {
           object={selectedObj3D}
           mode={transformMode}
           camera={viewCamera}
+          domElement={gizmoElement}
           onMouseDown={() => useRuntime.getState().setInteracting(true)}
           onMouseUp={() => {
             useRuntime.getState().setInteracting(false);
@@ -821,25 +848,24 @@ function SceneRenderer({
 
     // Split: the set on the left through the free eye, the picture on the
     // right through the camera, each in its own viewport of the one canvas.
+    // three takes viewports and scissors in CSS pixels and applies the pixel
+    // ratio itself; only the pass buffers are sized in device pixels.
     const dpr = gl.getPixelRatio();
     gl.getDrawingBufferSize(bufferSize);
-    const rect = (r: { x: number; y: number; w: number; h: number }) =>
-      [Math.round(r.x * dpr), Math.round(bufferSize.y - (r.y + r.h) * dpr), Math.round(r.w * dpr), Math.round(r.h * dpr)] as const;
+    const cssW = bufferSize.x / dpr;
+    const cssH = bufferSize.y / dpr;
+    const rect = (r: { x: number; y: number; w: number; h: number }) => [r.x, cssH - (r.y + r.h), r.w, r.h] as const;
 
     gl.setScissorTest(true);
-    gl.setViewport(0, 0, bufferSize.x, bufferSize.y);
-    gl.setScissor(0, 0, bufferSize.x, bufferSize.y);
+    gl.setViewport(0, 0, cssW, cssH);
+    gl.setScissor(0, 0, cssW, cssH);
     gl.setClearColor(0x000000, 0);
     gl.clear(true, true, true);
 
-    // The free eye is a virtual camera the size of the whole canvas; its left
-    // half is what gets drawn, so what the pointer sees and what is drawn agree.
     const [fx, fy, fw, fh] = rect(layout.free);
     gl.setViewport(fx, fy, fw, fh);
     gl.setScissor(fx, fy, fw, fh);
-    freeCamera.setViewOffset(bufferSize.x, bufferSize.y, 0, 0, fw, fh);
     gl.render(scene, freeCamera);
-    freeCamera.clearViewOffset();
 
     // The picture pane is the picture: the set's aids stay out of it.
     const helpers = hideEditorHelpers(scene, false, { overlaysOnly: true });
@@ -847,12 +873,12 @@ function SceneRenderer({
     gl.setViewport(sx, sy, sw, sh);
     gl.setScissor(sx, sy, sw, sh);
     if (!blur && !finish) gl.render(scene, shot);
-    else drawPicture({ width: sw, height: sh });
+    else drawPicture({ width: Math.round(sw * dpr), height: Math.round(sh * dpr) });
     for (const o of helpers) o.visible = true;
 
     gl.setScissorTest(false);
-    gl.setViewport(0, 0, bufferSize.x, bufferSize.y);
-    gl.setScissor(0, 0, bufferSize.x, bufferSize.y);
+    gl.setViewport(0, 0, cssW, cssH);
+    gl.setScissor(0, 0, cssW, cssH);
   }, 1);
 
   return null;

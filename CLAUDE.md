@@ -227,15 +227,20 @@ copie l'œil libre dans la caméra de prise de vue.
 
 **Les deux** (`split`) : un seul canvas, deux viewports GL avec scissor (`lib/viewLayout.ts`
 calcule les deux rectangles, partagés par le rendu, le pointeur et les surcouches DOM). Le décor
-à gauche, l'image à droite ajustée à son format. L'œil libre est une caméra **virtuelle de la
-taille du canvas entier** dont seule la moitié gauche est dessinée (`setViewOffset` au moment du
-rendu) : ainsi les maths de pointeur sur tout le canvas, y compris celles du gizmo de three qui ne
-se paramètrent pas, restent justes. Le volet image mappe le pointeur sur son rectangle et la
-caméra de prise de vue. Chaque moitié a ses OrbitControls, armés au `pointerdown` et au `wheel`
-selon le côté (phase de capture). Les surcouches (`userData.overlay`) sont retirées du volet image :
-il est l'image, pas le décor. Les passes de profondeur de champ et de look acceptent une taille
-explicite pour rendre dans un volet ; `renderer.setRenderTarget(null)` restaure le viewport et le
-scissor courants de three, c'est ce qui rend la chose possible sans les modifier davantage.
+à gauche, l'image à droite ajustée à son format. Chaque volet mappe le pointeur sur son propre
+rectangle et sa propre caméra (`setEvents({ compute })`). Le gizmo de three lit le pointeur contre
+le `getBoundingClientRect` de son élément et ne se paramètre pas autrement : en vue double il
+reçoit le canvas à travers un `Proxy` dont la boîte est le volet du décor. Chaque moitié a ses
+OrbitControls, armés au `pointerdown` et au `wheel` selon le côté (phase de capture). Les
+surcouches (`userData.overlay`) sont retirées du volet image : il est l'image, pas le décor. Les
+passes de profondeur de champ et de look acceptent une taille explicite pour rendre dans un volet ;
+`renderer.setRenderTarget(null)` restaure le viewport et le scissor courants de three, c'est ce qui
+rend la chose possible sans les modifier davantage.
+
+Piège : `setViewport` et `setScissor` de three prennent des **pixels CSS** et appliquent eux-mêmes
+le ratio de pixels. Leur passer des pixels du tampon décale et agrandit les volets dès que le ratio
+n'est pas 1 (c'est le cas dès la qualité Balanced). Seules les tailles de tampon des passes sont en
+pixels physiques.
 
 `runtime.exporting` est levé par `renderImage` et `renderVideo` : pendant un export, le rendu
 passe toujours par la caméra, quel que soit le regard à l'écran.
