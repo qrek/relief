@@ -175,6 +175,12 @@ export type LabelObject = BaseObject & {
   anchorY: number;
   /** Degrees, clockwise on the frame. */
   tilt: number;
+  /**
+   * Front: drawn over everything, the caption on a print. Behind: sits at the
+   * back of the scene and objects pass in front of it, the headline a subject
+   * floats over on a poster.
+   */
+  depth: "front" | "behind";
 };
 
 export type SceneObject = TextObject | ShapeObject | ModelObject | CoverObject | LabelObject;
@@ -231,6 +237,11 @@ export type Staging = {
   bokehHighlight: number;
   /** Millimetres one world unit stands for. Smaller turns the lens macro. */
   sceneScale: number;
+  /**
+   * Effects run over the finished frame, type and objects alike, after depth of
+   * field and tone mapping. This is what turns a render into a print.
+   */
+  look: EffectInstance[];
 };
 
 export type CanvasFormat = {

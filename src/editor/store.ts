@@ -46,7 +46,7 @@ const HISTORY_LIMIT = 60;
 const COALESCE_MS = 400;
 // Bump whenever an object or project field is added, so normalizeProject runs on
 // projects already saved in the browser.
-const PERSIST_VERSION = 8;
+const PERSIST_VERSION = 9;
 
 export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -154,6 +154,7 @@ export function createLabelObject(partial: Partial<LabelObject> = {}): LabelObje
     anchorX: 0,
     anchorY: 0,
     tilt: 0,
+    depth: "front",
     ...partial,
   };
 }
@@ -203,6 +204,22 @@ export function createProject(): Project {
   };
 }
 
+/**
+ * The effect actions take an owner id. A cover's id reaches that cover's stack;
+ * this sentinel reaches the look, the stack run over the whole frame. Both are
+ * the same kind of list, so one set of actions and one panel serve both.
+ */
+export const LOOK_ID = "__look__";
+
+function withEffects(p: Project, ownerId: string, fn: (list: EffectInstance[]) => void) {
+  if (ownerId === LOOK_ID) {
+    fn(p.staging.look);
+    return;
+  }
+  const owner = p.objects.find((o) => o.id === ownerId);
+  if (owner?.kind === "cover") fn(owner.effects);
+}
+
 /** Fills in fields added after a project was saved, so older files keep opening. */
 export function normalizeProject(input: unknown): Project {
   const raw = (input ?? {}) as Partial<Project>;
@@ -236,6 +253,7 @@ export function normalizeProject(input: unknown): Project {
         visible: o.visible ?? true,
         transform: o.transform ?? identity(),
       };
+      if (base.kind === "label") return { ...base, depth: (base as LabelObject).depth ?? "front" };
       if (base.kind !== "cover") return base;
       const cover = base as CoverObject;
       return {
@@ -246,7 +264,11 @@ export function normalizeProject(input: unknown): Project {
         stretch: cover.stretch ?? 1,
       };
     }) as SceneObject[],
-    staging: { ...DEFAULT_STAGING, ...(raw.staging ?? {}) },
+    staging: {
+      ...DEFAULT_STAGING,
+      ...(raw.staging ?? {}),
+      look: Array.isArray(raw.staging?.look) ? raw.staging.look : [],
+    },
     formatId: raw.formatId ?? "square",
     customFormat: raw.customFormat ?? { width: 1600, height: 1200 },
     camera: raw.camera ?? {
@@ -422,42 +444,38 @@ export const useEditor = create<EditorState>()(
 
         addEffect: (id, effectId) =>
           mutate((p) =>
-            patchObject(p, id, (o) => {
-              if (o.kind !== "cover" || o.effects.length >= MAX_EFFECTS) return;
-              o.effects.push(createEffectInstance(effectId));
+            withEffects(p, id, (list) => {
+              if (list.length < MAX_EFFECTS) list.push(createEffectInstance(effectId));
             }),
           ),
         removeEffect: (id, instanceId) =>
           mutate((p) =>
-            patchObject(p, id, (o) => {
-              if (o.kind !== "cover") return;
-              o.effects = o.effects.filter((e) => e.id !== instanceId);
+            withEffects(p, id, (list) => {
+              const i = list.findIndex((e) => e.id === instanceId);
+              if (i >= 0) list.splice(i, 1);
             }),
           ),
         moveEffect: (id, instanceId, direction) =>
           mutate((p) =>
-            patchObject(p, id, (o) => {
-              if (o.kind !== "cover") return;
-              const i = o.effects.findIndex((e) => e.id === instanceId);
+            withEffects(p, id, (list) => {
+              const i = list.findIndex((e) => e.id === instanceId);
               const j = i + direction;
-              if (i < 0 || j < 0 || j >= o.effects.length) return;
-              [o.effects[i], o.effects[j]] = [o.effects[j], o.effects[i]];
+              if (i < 0 || j < 0 || j >= list.length) return;
+              [list[i], list[j]] = [list[j], list[i]];
             }),
           ),
         toggleEffect: (id, instanceId) =>
           mutate((p) =>
-            patchObject(p, id, (o) => {
-              if (o.kind !== "cover") return;
-              const e = o.effects.find((x) => x.id === instanceId);
+            withEffects(p, id, (list) => {
+              const e = list.find((x) => x.id === instanceId);
               if (e) e.enabled = !e.enabled;
             }),
           ),
         setEffectParam: (id, instanceId, key, value, coalesce = true) =>
           mutate(
             (p) =>
-              patchObject(p, id, (o) => {
-                if (o.kind !== "cover") return;
-                const e = o.effects.find((x) => x.id === instanceId);
+              withEffects(p, id, (list) => {
+                const e = list.find((x) => x.id === instanceId);
                 if (e) e.params = { ...e.params, [key]: value };
               }),
             coalesce,
@@ -465,18 +483,16 @@ export const useEditor = create<EditorState>()(
         setEffectColor: (id, instanceId, key, value, coalesce = true) =>
           mutate(
             (p) =>
-              patchObject(p, id, (o) => {
-                if (o.kind !== "cover") return;
-                const e = o.effects.find((x) => x.id === instanceId);
+              withEffects(p, id, (list) => {
+                const e = list.find((x) => x.id === instanceId);
                 if (e) e.colors = { ...e.colors, [key]: value };
               }),
             coalesce,
           ),
         resetEffect: (id, instanceId) =>
           mutate((p) =>
-            patchObject(p, id, (o) => {
-              if (o.kind !== "cover") return;
-              const e = o.effects.find((x) => x.id === instanceId);
+            withEffects(p, id, (list) => {
+              const e = list.find((x) => x.id === instanceId);
               const def = e && effectById(e.effectId);
               if (!e || !def) return;
               e.params = defaultEffectParams(def);

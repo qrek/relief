@@ -139,6 +139,15 @@ function LabelFields({ obj }: { obj: LabelObject }) {
         onChange={(align) => updateObject(obj.id, { align }, false)}
       />
       <SelectField
+        label="Depth"
+        value={obj.depth}
+        options={[
+          { value: "front", label: "In front, over the picture" },
+          { value: "behind", label: "Behind, objects pass in front" },
+        ]}
+        onChange={(depth) => updateObject(obj.id, { depth }, false)}
+      />
+      <SelectField
         label="Case"
         value={obj.textCase}
         options={[

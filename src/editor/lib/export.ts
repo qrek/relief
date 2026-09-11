@@ -45,6 +45,44 @@ export function hideEditorHelpers(scene: THREE.Scene, alsoHideCovers = false): T
 }
 
 /**
+ * Draws the editing aids over a frame that has already been finished on the
+ * canvas. When the frame goes through depth of field or a look, the aids were
+ * kept out of it, so they are neither blurred nor halftoned; this puts them
+ * back on top, crisp, where a designer needs to see them.
+ */
+export function drawHelpersOnTop(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
+  let any = false;
+  scene.traverse((o) => {
+    if (o.visible && isEditorHelper(o)) any = true;
+  });
+  if (!any) return;
+
+  // Every top-level branch without an aid in it is switched off for this draw.
+  const muted: THREE.Object3D[] = [];
+  for (const child of scene.children) {
+    if (!child.visible) continue;
+    let holds = false;
+    child.traverse((o) => {
+      if (isEditorHelper(o)) holds = true;
+    });
+    if (!holds) {
+      child.visible = false;
+      muted.push(child);
+    }
+  }
+
+  const background = scene.background;
+  const autoClear = renderer.autoClear;
+  scene.background = null;
+  renderer.autoClear = false;
+  renderer.setRenderTarget(null);
+  renderer.render(scene, camera);
+  renderer.autoClear = autoClear;
+  scene.background = background;
+  for (const o of muted) o.visible = true;
+}
+
+/**
  * Renders the scene at an arbitrary resolution and returns the encoded image.
  * The live canvas is resized for a single frame and restored afterwards.
  */

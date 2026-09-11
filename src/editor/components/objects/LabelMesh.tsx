@@ -13,6 +13,12 @@ const LABEL_PARTS: PartInfo[] = [{ id: "body", name: "Text" }];
 
 /** Close enough to the camera to sit in front of the scene, far enough to avoid the near plane. */
 const LABEL_DISTANCE = 5;
+/**
+ * Far enough back that the scene passes in front of it, but short of a backdrop
+ * cover, which sits at forty. The type is scaled by the distance it is placed
+ * at, so it fills the same share of the frame either way.
+ */
+const BEHIND_DISTANCE = 30;
 
 const _position = new THREE.Vector3();
 const _scale = new THREE.Vector3();
@@ -47,11 +53,12 @@ export function LabelMesh({ obj }: { obj: LabelObject }) {
     node.matrixAutoUpdate = false;
     node.matrixWorldAutoUpdate = false;
 
-    const frameHeight = 2 * Math.tan((camera.fov * Math.PI) / 360) * LABEL_DISTANCE;
+    const distance = obj.depth === "behind" ? BEHIND_DISTANCE : LABEL_DISTANCE;
+    const frameHeight = 2 * Math.tan((camera.fov * Math.PI) / 360) * distance;
     const frameWidth = frameHeight * camera.aspect;
 
     _position
-      .set(obj.anchorX * frameWidth, obj.anchorY * frameHeight, -LABEL_DISTANCE)
+      .set(obj.anchorX * frameWidth, obj.anchorY * frameHeight, -distance)
       .applyQuaternion(camera.quaternion)
       .add(camera.position);
 
@@ -64,6 +71,7 @@ export function LabelMesh({ obj }: { obj: LabelObject }) {
   });
 
   const cacheKey = [value, font.id, obj.letterSpacing, obj.lineHeight, obj.align].join("|");
+  const behind = obj.depth === "behind";
 
   return (
     <group ref={group}>
@@ -86,7 +94,7 @@ export function LabelMesh({ obj }: { obj: LabelObject }) {
           lineHeight={obj.lineHeight}
           bevelEnabled={false}
           curveSegments={6}
-          renderOrder={10}
+          renderOrder={behind ? -10 : 10}
           userData={{ partId: "body", isLabel: true }}
         >
           {value || " "}
@@ -95,9 +103,11 @@ export function LabelMesh({ obj }: { obj: LabelObject }) {
             transparent
             opacity={obj.opacity}
             toneMapped={false}
-            // Flat type belongs on top of the render, not inside it.
-            depthTest={false}
-            depthWrite={false}
+            // In front, the type is a caption laid over the picture and ignores
+            // depth. Behind, it is a sheet at the back of the room that the
+            // subject occludes, so it takes part in the depth test like any wall.
+            depthTest={behind}
+            depthWrite={behind}
             side={THREE.DoubleSide}
           />
         </Text3D>

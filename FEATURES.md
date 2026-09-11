@@ -546,3 +546,27 @@ Un premier plan flou de moins de six pixels ne passe pas par la couche au quart 
 reste celle que donne la collecte ordinaire, un peu plus franche qu'elle ne devrait. À cette
 échelle de flou l'écart n'est pas lisible, et l'envoyer dans un tampon quatre fois plus petit
 coûterait plus qu'il ne rapporterait.
+
+## 24. Look, type derrière la scène, premier template
+
+### Look
+Une pile d'effets sur l'image entière, dans le panneau Staging. Les quarante-neuf effets des covers
+s'appliquent désormais aussi au cadre fini, type et objets confondus, après la profondeur de champ.
+Un nouvel effet, **Colour halftone**, reproduit une trame quatre couleurs de presse : quatre
+plaques aux angles classiques, chaque point dimensionné par la quantité d'encre que l'image demande,
+multipliées sur le papier. Un seuil garde le papier vierge là où un vrai tirage n'imprime rien.
+
+### Typographie plate derrière la scène
+Un texte plat peut se poser au fond de la pièce : les objets passent devant lui. C'est ce qui permet
+le titre d'affiche qu'un sujet recouvre.
+
+### Aides d'édition
+Le gizmo n'est plus flouté ni tramé : il est retiré de l'image avant les passes et redessiné net
+par-dessus.
+
+### Template « Like no one »
+Le premier template livré depuis la suppression de la série précédente. Une affiche portrait :
+titre en trois lignes, bleu de presse, derrière un galet jaune à facettes, le tout tramé et grainé.
+Il a été construit d'après une référence d'affiche riso et jugé à la taille d'export, en six
+itérations, avant d'entrer dans la liste. Il apparaît en tête de la bibliothèque Scenes et se charge
+d'un clic.

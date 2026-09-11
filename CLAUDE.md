@@ -49,6 +49,11 @@ caméra, donc il ne tourne jamais en orbite et reste au même endroit du cadre d
 Sa taille est une fraction de la hauteur du cadre. Attention, `Center` de drei place le contenu
 **du côté** nommé, donc un alignement à gauche utilise le drapeau `right`.
 
+`label.depth` vaut `front` (par-dessus tout, sans test de profondeur : une légende) ou `behind`
+(posé à trente unités devant la caméra, avec test et écriture de profondeur : un titre d'affiche
+que le sujet recouvre). Le facteur d'échelle suit la distance, donc la taille apparente est la
+même dans les deux cas.
+
 `material.artwork` imprime une image sur une surface : `lib/artwork.ts` compose la couleur du
 matériau et l'image dans un canvas, puis la pose en `map`. Le décalage est appliqué sur la
 texture, pas sur le canvas, pour que « Across » fasse tourner l'étiquette autour d'une canette.
@@ -67,10 +72,39 @@ périodique en `uTime` de période `TAU`. Pour le bruit, on parcourt un cercle
 
 Le mouvement s'applique sur un groupe interne, pas sur le groupe transformé par le gizmo.
 
-## Scènes enregistrées
-Il n'y a plus de templates livrés avec l'app. Le bouton Scenes ouvre la bibliothèque des scènes
-que le designer a lui-même enregistrées : le projet sérialisé va dans le champ `data` d'une entrée
-IndexedDB de kind `template`, la vignette dans `blob`.
+## Templates et scènes enregistrées
+Le bouton Scenes ouvre deux listes. En haut, les **templates** de `presets/templates.ts` : des
+compositions finies (sujet, type, lumière, objectif, look) rendues par l'app elle-même, vignette
+dans `public/templates/`. Une première série livrée en 2026 avait été jugée plate et supprimée ;
+la règle depuis est **peu, mais très bien**. Un template est une affiche, pas un objet sur un
+fond : il part d'une référence visuelle, se juge à l'image à la taille d'export, et n'entre dans
+la liste que lorsqu'il tient la comparaison. Le premier, « Like no one », vient d'une affiche
+riso : titre en trois lignes derrière, galet à facettes devant, trame quatre couleurs sur le tout.
+
+En dessous, les scènes que le designer a lui-même enregistrées : le projet sérialisé va dans le
+champ `data` d'une entrée IndexedDB de kind `template`, la vignette dans `blob`.
+
+## Look : effets sur l'image entière
+`staging.look` est une pile d'effets (les mêmes que ceux des covers, `MAX_EFFECTS` au plus) qui
+s'applique à **toute l'image finie**, type et objets confondus, après la profondeur de champ.
+C'est ce qui transforme un rendu en impression. `lib/look.ts` porte la passe : la scène est
+dessinée dans une cible, développée (tone mapping puis transfert sRGB, à la main), la pile tourne
+dessus via `EffectChain`, et le résultat est recopié tel quel sur le canvas.
+
+Les actions d'effets du store prennent un id de propriétaire : l'id d'un cover, ou `LOOK_ID`
+pour le look. Le même panneau `EffectStack` sert les deux.
+
+Deux leçons de shader qui complètent celles de la profondeur de champ :
+- Une passe qui dessine **toujours** dans une cible ne reçoit pas les fonctions de tone mapping
+  de three, qui ne les injecte que pour un tirage à l'écran. Elle doit inclure elle-même
+  `tonemapping_pars_fragment`. Les fonctions de transfert de couleur, elles, sont toujours là.
+- Dans une trame tournée, le rapport d'aspect s'applique **avant** la rotation à l'aller et
+  **après** la rotation inverse au retour. Dans l'autre ordre la grille est cisaillée d'une
+  quantité qui dépend de l'angle, et les plaques d'une trame couleur se retrouvent décalées de
+  plusieurs cellules les unes par rapport aux autres.
+
+Les aides d'édition (gizmo) sont retirées de l'image avant la profondeur de champ ou le look, puis
+redessinées par-dessus le résultat par `drawHelpersOnTop`, pour rester nettes et non tramées.
 
 ## Caméra et profondeur de champ
 `lib/postFx.ts` calcule la profondeur de champ sur trois échelles. Ce que chaque pixel voit à

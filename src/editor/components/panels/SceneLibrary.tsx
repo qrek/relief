@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { currentFormat, normalizeProject, useEditor } from "../../store";
+import { currentFormat, newId, normalizeProject, useEditor } from "../../store";
+import { TEMPLATES, type TemplateDef } from "../../presets/templates";
 import { assetUrl, deleteAsset, getTemplateData, listAssets, putTemplate, type AssetMeta } from "../../lib/assets";
 import { renderImage } from "../../lib/export";
 import { Button } from "../ui";
@@ -48,6 +49,12 @@ export function SceneLibrary({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const openTemplate = (tpl: TemplateDef) => {
+    if (!confirm(`Start from "${tpl.name}"? The current scene is replaced.`)) return;
+    loadProject(normalizeProject({ ...tpl.project, id: newId(), name: tpl.name }));
+    onClose();
+  };
+
   const open = async (scene: SavedScene) => {
     const json = await getTemplateData(scene.id);
     if (!json) {
@@ -78,6 +85,27 @@ export function SceneLibrary({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">Templates</h3>
+          <div className="mb-6 grid grid-cols-3 gap-3">
+            {TEMPLATES.map((tpl) => (
+              <button
+                key={tpl.id}
+                type="button"
+                onClick={() => openTemplate(tpl)}
+                title={tpl.blurb}
+                className="flex w-full flex-col gap-2 rounded-lg p-2 text-left hover:bg-white/10"
+              >
+                <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-md bg-black/50 p-1 ring-1 ring-white/5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={tpl.thumbnail} alt="" className="h-full w-full object-contain" />
+                </span>
+                <span className="truncate text-xs font-medium text-neutral-200">{tpl.name}</span>
+                <span className="line-clamp-2 text-[10.5px] leading-snug text-neutral-500">{tpl.blurb}</span>
+              </button>
+            ))}
+          </div>
+
+          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">Your scenes</h3>
           {scenes.length === 0 ? (
             <p className="p-8 text-center text-[11px] leading-relaxed text-neutral-500">
               Nothing saved yet.

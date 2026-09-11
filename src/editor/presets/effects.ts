@@ -242,14 +242,65 @@ const colour: EffectDef[] = [
       vec2 asp = vec2(uAspect, 1.0);
       mat2 R = rot2(p_angle);
       mat2 Ri = rot2(-p_angle);
-      vec2 g = R * (uv - 0.5) * gridN * asp;
+      // Aspect first, so the grid is square in pixels, then the rotation; and
+      // the way back undoes them in the opposite order. Rotating a grid that
+      // is not yet square shears it, and the shear differs with the angle.
+      vec2 g = R * ((uv - 0.5) * asp) * gridN;
       vec2 cell = floor(g) + 0.5;
-      vec2 su = (Ri * cell) / (gridN * asp) + 0.5;
+      vec2 su = (Ri * (cell / gridN)) / asp + 0.5;
       float l = clamp(luma(texture2D(uMap, clamp(su, 0.0, 1.0)).rgb) * p_gain, 0.0, 1.0);
       float radius = (1.0 - l) * 0.72;
       float d = length(g - cell);
       float m = 1.0 - smoothstep(radius - 0.06, radius + 0.06, d);
       col.rgb = mix(c_bg, c_fg, m);
+    `,
+  },
+  {
+    id: "cmyk",
+    name: "Colour halftone",
+    category: "Colour",
+    params: [
+      n("scale", "Screen", 40, 400, 1, 180),
+      n("angle", "Angle", 0, 1.5708, 0.01, 0),
+      n("gain", "Ink", 0.2, 2, 0.01, 1),
+      n("black", "Black plate", 0, 1, 0.01, 0.6),
+      n("fill", "Dot fill", 0.4, 0.85, 0.01, 0.6),
+      n("soft", "Softness", 0.02, 0.3, 0.005, 0.08),
+    ],
+    colors: [{ key: "paper", label: "Paper", default: "#f2efe8" }],
+    glsl: /* glsl */ `
+      // Four ink screens at the classic press angles, each dot sized by how much
+      // of that ink the picture needs there, multiplied over the paper. This is
+      // what a magazine page looks like under a loupe, and it keeps the colour
+      // where a single-ink halftone would throw it away.
+      float gridN = max(6.0, p_scale);
+      vec2 asp = vec2(uAspect, 1.0);
+      vec3 sheet = c_paper;
+      for (int i = 0; i < 4; i++) {
+        float a = p_angle + (i == 0 ? 0.2618 : i == 1 ? 1.3090 : i == 2 ? 0.0 : 0.7854);
+        vec3 ink = i == 0 ? vec3(0.0, 0.62, 0.91) : i == 1 ? vec3(0.91, 0.0, 0.5) : i == 2 ? vec3(1.0, 0.93, 0.0) : vec3(0.12, 0.11, 0.12);
+        mat2 R = rot2(a);
+        mat2 Ri = rot2(-a);
+        vec2 g = R * ((uv - 0.5) * asp) * gridN;
+        vec2 cell = floor(g) + 0.5;
+        vec2 su = (Ri * (cell / gridN)) / asp + 0.5;
+        vec3 src = clamp(texture2D(uMap, clamp(su, 0.0, 1.0)).rgb, 0.0, 1.0);
+        float k = 1.0 - max(max(src.r, src.g), src.b);
+        float den = max(0.001, 1.0 - k);
+        float amount = i == 0 ? (1.0 - src.r - k) / den : i == 1 ? (1.0 - src.g - k) / den : i == 2 ? (1.0 - src.b - k) / den : k * p_black;
+        // A toe keeps the paper clean: a real press prints nothing for a tint
+        // this faint, and a field of specks where the sheet should be bare is
+        // the first thing that reads as fake.
+        amount = clamp((amount * p_gain - 0.06) / 0.94, 0.0, 1.0);
+        // Coverage goes with the area of the dot, so the radius follows its root.
+        // The fill caps how far a full-ink dot grows: below about 0.6 the dots
+        // stay separate even in a solid, which is the texture of the real thing.
+        float radius = sqrt(amount) * p_fill;
+        float d = length(g - cell);
+        float m = 1.0 - smoothstep(radius - p_soft, radius + p_soft, d);
+        sheet *= mix(vec3(1.0), ink, m);
+      }
+      col.rgb = sheet;
     `,
   },
   {

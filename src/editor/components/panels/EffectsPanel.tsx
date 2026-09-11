@@ -13,8 +13,6 @@ import { Button, ColorField, Section, Slider } from "../ui";
 
 export function EffectsPanel() {
   const obj = useSelectedObject();
-  const addEffect = useEditor((s) => s.addEffect);
-  const [picking, setPicking] = useState(false);
 
   if (!obj) {
     return <div className="p-4 text-xs text-neutral-500">Select an object to work on it.</div>;
@@ -31,12 +29,33 @@ export function EffectsPanel() {
   }
 
   const cover = obj as CoverObject;
-  const full = cover.effects.length >= MAX_EFFECTS;
+  return <EffectStack ownerId={cover.id} effects={cover.effects} title="Stack" />;
+}
+
+/**
+ * A stack of effects and the controls to build it. The owner id is either a
+ * cover, whose media the stack treats, or the look, which treats the whole
+ * frame; the store resolves which.
+ */
+export function EffectStack({
+  ownerId,
+  effects,
+  title,
+  hint,
+}: {
+  ownerId: string;
+  effects: EffectInstance[];
+  title: string;
+  hint?: string;
+}) {
+  const addEffect = useEditor((s) => s.addEffect);
+  const [picking, setPicking] = useState(false);
+  const full = effects.length >= MAX_EFFECTS;
 
   return (
     <>
       <Section
-        title={`Stack · ${cover.effects.length}/${MAX_EFFECTS}`}
+        title={`${title} · ${effects.length}/${MAX_EFFECTS}`}
         right={
           <Button variant="default" onClick={() => setPicking((v) => !v)} disabled={full}>
             {picking ? "Close" : "Add effect"}
@@ -46,14 +65,14 @@ export function EffectsPanel() {
         {picking && !full && (
           <EffectPicker
             onPick={(effectId) => {
-              addEffect(cover.id, effectId);
+              addEffect(ownerId, effectId);
               setPicking(false);
             }}
           />
         )}
-        {cover.effects.length === 0 && !picking && (
+        {effects.length === 0 && !picking && (
           <p className="text-[11px] leading-relaxed text-neutral-500">
-            No effects yet. They apply from top to bottom, so the order changes the result.
+            {hint ?? "No effects yet. They apply from top to bottom, so the order changes the result."}
           </p>
         )}
         {full && (
@@ -63,14 +82,8 @@ export function EffectsPanel() {
         )}
       </Section>
 
-      {cover.effects.map((instance, index) => (
-        <EffectCard
-          key={instance.id}
-          cover={cover}
-          instance={instance}
-          index={index}
-          count={cover.effects.length}
-        />
+      {effects.map((instance, index) => (
+        <EffectCard key={instance.id} ownerId={ownerId} instance={instance} index={index} count={effects.length} />
       ))}
     </>
   );
@@ -112,12 +125,12 @@ function EffectPicker({ onPick }: { onPick: (effectId: string) => void }) {
 }
 
 function EffectCard({
-  cover,
+  ownerId,
   instance,
   index,
   count,
 }: {
-  cover: CoverObject;
+  ownerId: string;
   instance: EffectInstance;
   index: number;
   count: number;
@@ -133,7 +146,7 @@ function EffectCard({
   if (!def) {
     return (
       <Section title={`Unknown effect: ${instance.effectId}`}>
-        <Button variant="danger" onClick={() => removeEffect(cover.id, instance.id)}>
+        <Button variant="danger" onClick={() => removeEffect(ownerId, instance.id)}>
           Remove
         </Button>
       </Section>
@@ -145,26 +158,26 @@ function EffectCard({
       title={`${index + 1}. ${def.name}`}
       right={
         <div className="flex items-center gap-0.5">
-          <IconButton title="Move up" disabled={index === 0} onClick={() => moveEffect(cover.id, instance.id, -1)}>
+          <IconButton title="Move up" disabled={index === 0} onClick={() => moveEffect(ownerId, instance.id, -1)}>
             ↑
           </IconButton>
           <IconButton
             title="Move down"
             disabled={index === count - 1}
-            onClick={() => moveEffect(cover.id, instance.id, 1)}
+            onClick={() => moveEffect(ownerId, instance.id, 1)}
           >
             ↓
           </IconButton>
           <IconButton
             title={instance.enabled ? "Mute" : "Unmute"}
-            onClick={() => toggleEffect(cover.id, instance.id)}
+            onClick={() => toggleEffect(ownerId, instance.id)}
           >
             {instance.enabled ? "●" : "○"}
           </IconButton>
-          <IconButton title="Reset" onClick={() => resetEffect(cover.id, instance.id)}>
+          <IconButton title="Reset" onClick={() => resetEffect(ownerId, instance.id)}>
             ↺
           </IconButton>
-          <IconButton title="Remove" onClick={() => removeEffect(cover.id, instance.id)}>
+          <IconButton title="Remove" onClick={() => removeEffect(ownerId, instance.id)}>
             ×
           </IconButton>
         </div>
@@ -181,7 +194,7 @@ function EffectCard({
               max={p.max}
               step={p.step}
               format={p.step >= 1 ? (v) => String(Math.round(v)) : undefined}
-              onChange={(v) => setEffectParam(cover.id, instance.id, p.key, v)}
+              onChange={(v) => setEffectParam(ownerId, instance.id, p.key, v)}
             />
           ))}
           {def.colors.map((c) => (
@@ -189,7 +202,7 @@ function EffectCard({
               key={c.key}
               label={c.label}
               value={instance.colors[c.key] ?? c.default}
-              onChange={(v) => setEffectColor(cover.id, instance.id, c.key, v)}
+              onChange={(v) => setEffectColor(ownerId, instance.id, c.key, v)}
             />
           ))}
         </div>

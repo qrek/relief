@@ -39,6 +39,7 @@ export const DEFAULT_STAGING: Staging = {
   bladeAngle: 0,
   bokehHighlight: 1,
   sceneScale: 50,
+  look: [],
 };
 
 export const DEFAULT_CAMERA = {

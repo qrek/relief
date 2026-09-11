@@ -1,7 +1,8 @@
 "use client";
 
 import * as THREE from "three";
-import { useEditor } from "../../store";
+import { LOOK_ID, useEditor } from "../../store";
+import { EffectStack } from "./EffectsPanel";
 import { useRuntime } from "../../runtime";
 import { DEFAULT_CAMERA, ENVIRONMENTS } from "../../presets/scene";
 import { focusField } from "../../lib/postFx";
@@ -55,6 +56,13 @@ export function StagingPanel() {
 
   return (
     <>
+      <EffectStack
+        ownerId={LOOK_ID}
+        effects={st.look}
+        title="Look"
+        hint="Effects over the whole picture, type and objects alike, once the frame is finished. This is what turns a render into a print."
+      />
+
       <Section title="Environment">
         <SelectField
           label="HDRI"

@@ -14,6 +14,8 @@ import { currentFormat, useEditor, type Quality } from "../store";
 import { useRuntime } from "../runtime";
 import type { Motion, PartInfo, SceneObject, Staging } from "../types";
 import { DepthOfFieldPass, focalToFov } from "../lib/postFx";
+import { LookPass, lookIsActive } from "../lib/look";
+import { drawHelpersOnTop, hideEditorHelpers } from "../lib/export";
 import { sceneClock } from "../lib/clock";
 import { applyMotion } from "../presets/motion";
 import { TextMesh } from "./objects/TextMesh";
@@ -485,28 +487,56 @@ function ClockDriver() {
  */
 function SceneRenderer({ staging }: { staging: Staging }) {
   const pass = useMemo(() => new DepthOfFieldPass(), []);
+  const look = useMemo(() => new LookPass(), []);
   const quality = useEditor((s) => s.quality);
-  useEffect(() => () => pass.dispose(), [pass]);
+  useEffect(
+    () => () => {
+      pass.dispose();
+      look.dispose();
+    },
+    [pass, look],
+  );
 
   useFrame(({ gl, scene, camera }) => {
     // Depth of field is the most expensive thing in the frame and the least
     // useful mid-drag, when the eye follows motion rather than judging an edge.
     // Fine keeps it on regardless, for the moment just before an export.
     const busy = quality !== "fine" && useRuntime.getState().interacting;
-    if (!staging.depthOfField || busy) {
+    const blur = staging.depthOfField && !busy;
+    const finish = lookIsActive(staging.look);
+
+    if (!blur && !finish) {
       gl.render(scene, camera);
       return;
     }
-    pass.render(gl, scene, camera as THREE.PerspectiveCamera, {
-      focus: staging.focusDistance,
-      aperture: staging.aperture,
-      focalLength: staging.focalLength,
-      maxBlur: staging.maxBlur,
-      blades: staging.blades,
-      bladeAngle: (staging.bladeAngle * Math.PI) / 180,
-      highlight: staging.bokehHighlight,
-      worldMm: staging.sceneScale,
-    });
+
+    // The gizmo must not be blurred or printed with the picture. It is kept
+    // out of the frame and drawn over the finished result at the end.
+    const helpers = hideEditorHelpers(scene);
+    const drawScene = () => {
+      if (!blur) {
+        gl.render(scene, camera);
+        return;
+      }
+      pass.render(gl, scene, camera as THREE.PerspectiveCamera, {
+        focus: staging.focusDistance,
+        aperture: staging.aperture,
+        focalLength: staging.focalLength,
+        maxBlur: staging.maxBlur,
+        blades: staging.blades,
+        bladeAngle: (staging.bladeAngle * Math.PI) / 180,
+        highlight: staging.bokehHighlight,
+        worldMm: staging.sceneScale,
+      });
+    };
+
+    // The look stays on while the camera moves: it is the picture, not a polish
+    // on it, and a print that flickered back to a render would be disorienting.
+    if (finish) look.render(gl, drawScene, staging.look, sceneClock.time);
+    else drawScene();
+
+    for (const o of helpers) o.visible = true;
+    drawHelpersOnTop(gl, scene, camera);
   }, 1);
 
   return null;
