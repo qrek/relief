@@ -30,6 +30,9 @@ import { DEFAULT_MOTION } from "./presets/motion";
 import { sceneClock } from "./lib/clock";
 import {
   ALL_TRANSFORM_CHANNELS,
+  CAMERA_CHANNELS,
+  cameraValue,
+  hasKeys,
   keyAt,
   normalizeTracks,
   sampleChannel,
@@ -67,7 +70,7 @@ const HISTORY_LIMIT = 60;
 const COALESCE_MS = 400;
 // Bump whenever an object or project field is added, so normalizeProject runs on
 // projects already saved in the browser.
-const PERSIST_VERSION = 12;
+const PERSIST_VERSION = 13;
 
 export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -227,7 +230,7 @@ export function createProject(): Project {
     staging: { ...DEFAULT_STAGING },
     formatId: "square",
     customFormat: { width: 1600, height: 1200 },
-    camera: { position: [...DEFAULT_CAMERA.position], target: [...DEFAULT_CAMERA.target] },
+    camera: { position: [...DEFAULT_CAMERA.position], target: [...DEFAULT_CAMERA.target], keys: {} },
     clip: { duration: 4 },
   };
 }
@@ -238,6 +241,9 @@ export function createProject(): Project {
  * the same kind of list, so one set of actions and one panel serve both.
  */
 export const LOOK_ID = "__look__";
+
+/** The camera's id when it is the selection: it is an object to the panels and the timeline, not to the scene list. */
+export const CAMERA_ID = "__camera__";
 
 function withEffects(p: Project, ownerId: string, fn: (list: EffectInstance[]) => void) {
   if (ownerId === LOOK_ID) {
@@ -256,6 +262,10 @@ function withTrack(p: Project, track: TrackRef, fn: (tracks: KeyTracks, base: (c
   if (track.kind === "object") {
     const o = p.objects.find((x) => x.id === track.id);
     if (o) fn(o.keys, (c) => transformValue(o.transform, c));
+    return;
+  }
+  if (track.kind === "camera") {
+    fn(p.camera.keys, (c) => cameraValue(p.camera, p.staging.focalLength, p.staging.focusDistance, c));
     return;
   }
   withEffects(p, track.ownerId, (list) => {
@@ -348,9 +358,10 @@ export function normalizeProject(input: unknown): Project {
     staging: withLookKeys(normalizeStaging(raw.staging)),
     formatId: raw.formatId ?? "square",
     customFormat: raw.customFormat ?? { width: 1600, height: 1200 },
-    camera: raw.camera ?? {
-      position: [...DEFAULT_CAMERA.position],
-      target: [...DEFAULT_CAMERA.target],
+    camera: {
+      position: raw.camera?.position ?? [...DEFAULT_CAMERA.position],
+      target: raw.camera?.target ?? [...DEFAULT_CAMERA.target],
+      keys: normalizeTracks(raw.camera?.keys),
     },
     clip: { duration: Number(raw.clip?.duration) > 0 ? Number(raw.clip?.duration) : 4 },
   };
@@ -797,14 +808,40 @@ export const useEditor = create<EditorState>()(
           ),
 
         setStaging: (patch, coalesce = true) =>
-          mutate((p) => Object.assign(p.staging, patch), coalesce),
+          mutate((p) => {
+            Object.assign(p.staging, patch);
+            // A keyed lens or focus writes its key at this moment of the clip.
+            const t = sceneClock.clipTime;
+            const focal = p.camera.keys.focal;
+            if (patch.focalLength !== undefined && focal?.length) {
+              p.camera.keys.focal = upsertKey(focal, { t, v: patch.focalLength, ease: focal[0].ease }, newId);
+            }
+            const focus = p.camera.keys.focus;
+            if (patch.focusDistance !== undefined && focus?.length) {
+              p.camera.keys.focus = upsertKey(focus, { t, v: patch.focusDistance, ease: focus[0].ease }, newId);
+            }
+          }, coalesce),
         setFormat: (formatId, custom) =>
           mutate((p) => {
             p.formatId = formatId;
             if (custom) p.customFormat = custom;
           }),
+        // Outside the history on purpose: an orbit would flood it. With keys on
+        // the camera, moving it writes the keyed channels at this moment.
         setCamera: (position, target) =>
-          set((s) => ({ project: { ...s.project, camera: { position, target } } })),
+          set((s) => {
+            let keys = s.project.camera.keys;
+            if (hasKeys(keys)) {
+              keys = { ...keys };
+              const t = sceneClock.clipTime;
+              const next = { position, target };
+              for (const channel of [...CAMERA_CHANNELS.position, ...CAMERA_CHANNELS.target]) {
+                const track = keys[channel];
+                if (track?.length) keys[channel] = upsertKey(track, { t, v: cameraValue(next, 0, 0, channel), ease: track[0].ease }, newId);
+              }
+            }
+            return { project: { ...s.project, camera: { position, target, keys } } };
+          }),
         renameProject: (name) => set((s) => ({ project: { ...s.project, name } })),
         newProject: () => {
           set({ project: createProject(), selectedId: null, selectedPartId: null, past: [], future: [] });

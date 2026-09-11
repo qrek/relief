@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import * as THREE from "three";
-import { objectKindLabel, useEditor, useSelectedObject } from "../../store";
+import { CAMERA_ID, objectKindLabel, useEditor, useSelectedObject } from "../../store";
+import { CameraPanel } from "./CameraPanel";
 import { useRuntime } from "../../runtime";
 import { FontPicker } from "./FontPicker";
 import { defaultParams, objectPresetById } from "../../presets/objects";
@@ -26,7 +27,9 @@ export function ObjectPanel() {
   const error = useRuntime((s) => (obj ? s.errors[obj.id] : undefined));
   const toggleKeys = useEditor((s) => s.toggleKeys);
   const tick = useClockTick();
+  const cameraSelected = useEditor((s) => s.selectedId === CAMERA_ID);
 
+  if (cameraSelected) return <CameraPanel />;
   if (!obj) {
     return (
       <div className="p-4 text-xs leading-relaxed text-neutral-500">

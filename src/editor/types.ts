@@ -305,7 +305,8 @@ export type Project = {
   staging: Staging;
   formatId: string;
   customFormat: { width: number; height: number };
-  camera: { position: Vec3; target: Vec3 };
+  /** The shot camera: where it stands, what it looks at, and its keyed channels (position, target, focal, focus). */
+  camera: { position: Vec3; target: Vec3; keys: KeyTracks };
   /** The clip the keyframes live in: it loops, and a video export is one pass of it. */
   clip: { duration: number };
 };

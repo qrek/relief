@@ -1,9 +1,9 @@
 "use client";
 
-import { useEditor } from "../../store";
+import { CAMERA_ID, useEditor } from "../../store";
 import { useRuntime } from "../../runtime";
 import { IconButton } from "../ui";
-import { ALargeSmall, Box, ChevronDown, ChevronUp, Eye, EyeOff, Image as ImageIcon, Lock, LockOpen, Shapes, Type, X } from "lucide-react";
+import { ALargeSmall, Box, ChevronDown, ChevronUp, Eye, EyeOff, Image as ImageIcon, Lock, LockOpen, Shapes, Type, Video, X } from "lucide-react";
 
 const KIND_ICON = { text: Type, shape: Shapes, model: Box, cover: ImageIcon, label: ALargeSmall } as const;
 
@@ -26,6 +26,18 @@ export function LayersPanel() {
         <span className="text-[11px] text-neutral-600">{objects.length}</span>
       </div>
       <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1.5 pb-2">
+        <li>
+          <div
+            onClick={() => select(CAMERA_ID)}
+            title="The camera: place it, aim it, key it"
+            className={`mb-1 flex cursor-pointer items-center gap-2 rounded-md border-b border-white/5 px-2 py-1.5 pb-2 text-xs ${
+              selectedId === CAMERA_ID ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "text-neutral-300 hover:bg-white/5"
+            }`}
+          >
+            <Video size={13} strokeWidth={1.75} className={`shrink-0 ${selectedId === CAMERA_ID ? "text-[var(--accent)]" : "text-neutral-500"}`} />
+            <span className="flex-1 truncate">Camera</span>
+          </div>
+        </li>
         {[...objects].reverse().map((o, idx) => {
           const active = o.id === selectedId;
           const parts = partsById[o.id] ?? [];

@@ -145,6 +145,17 @@ lecture, temps, durée du clip, et pour la ligne sélectionnée l'ease et « Clo
 première clé à la fin). Les lignes sont adressées par `TrackRef` (objet + canaux, ou propriétaire +
 instance + canaux) ; `withTrack` dans le store est le seul chemin vers leurs clés.
 
+**La caméra est un objet.** Elle n'est pas dans `project.objects` (aucun `kind` à traverser)
+mais la sélection peut la désigner par `CAMERA_ID` : une ligne « Camera » en tête des calques,
+`CameraPanel` à la place du panneau objet (position, « Looks at », focale, mise au point, chacun
+avec son losange), une ligne « Camera » dans la timeline. Ses clés vivent dans
+`project.camera.keys` (canaux `position.*`, `target.*`, `focal`, `focus`) ; `setCamera` et
+`setStaging` écrivent la clé au temps courant quand le canal est keyé ; un `useFrame` dans
+`SceneContent` pose la caméra de prise de vue d'après ses clés à chaque image, sauf pendant une
+orbite ou une prise au gizmo (`interacting`), et la profondeur de champ lit le `focus` keyé. En
+vue libre ou double, `CameraHandle` est une boule invisible à la position de la caméra : un clic
+la sélectionne, le gizmo la déplace.
+
 Les panneaux affichent la valeur échantillonnée au temps courant, pas la valeur de base :
 `useClockTick` échantillonne l'horloge quelques fois par seconde sans en faire un état React. Le
 gizmo lève `runtime.dragging` pendant la prise, pour que l'échantillonnage ne se batte pas avec

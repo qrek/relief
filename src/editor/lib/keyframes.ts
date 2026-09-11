@@ -15,12 +15,22 @@ export const ALL_TRANSFORM_CHANNELS = [
   ...TRANSFORM_CHANNELS.scale,
 ];
 
+/** The camera's channels: where it stands, what it looks at, its lens and its focus. */
+export const CAMERA_CHANNELS: Record<"position" | "target" | "focal" | "focus", string[]> = {
+  position: ["position.x", "position.y", "position.z"],
+  target: ["target.x", "target.y", "target.z"],
+  focal: ["focal"],
+  focus: ["focus"],
+};
+export const ALL_CAMERA_CHANNELS = [...CAMERA_CHANNELS.position, ...CAMERA_CHANNELS.target];
+
 /**
  * A row of the timeline: one or more channels of one thing, moved and keyed
  * together. "Position" on an object is three channels; one effect slider is one.
  */
 export type TrackRef =
   | { kind: "object"; id: string; channels: string[] }
+  | { kind: "camera"; channels: string[] }
   | { kind: "effect"; ownerId: string; instanceId: string; channels: string[] };
 
 /** Eases run over 0..1 and return 0..1. */
@@ -91,6 +101,38 @@ export function sampleTransform(tracks: KeyTracks, t: number, base: Transform): 
       sampleChannel(tracks[channel], t, base[vector][i], vector === "rotation"),
     ) as [number, number, number];
   return { position: read("position"), rotation: read("rotation"), scale: read("scale") };
+}
+
+/** The camera at a time: keyed channels from their keys, the rest as they are. */
+export function sampleCamera(
+  tracks: KeyTracks,
+  t: number,
+  base: { position: [number, number, number]; target: [number, number, number] },
+  focal: number,
+  focus: number,
+): { position: [number, number, number]; target: [number, number, number]; focal: number; focus: number } {
+  if (!hasKeys(tracks)) return { position: base.position, target: base.target, focal, focus };
+  const vec = (channels: string[], v: [number, number, number]) =>
+    channels.map((c, i) => sampleChannel(tracks[c], t, v[i])) as [number, number, number];
+  return {
+    position: vec(CAMERA_CHANNELS.position, base.position),
+    target: vec(CAMERA_CHANNELS.target, base.target),
+    focal: sampleChannel(tracks.focal, t, focal),
+    focus: sampleChannel(tracks.focus, t, focus),
+  };
+}
+
+/** Reads one camera channel off the project. */
+export function cameraValue(
+  camera: { position: [number, number, number]; target: [number, number, number] },
+  focal: number,
+  focus: number,
+  channel: string,
+): number {
+  if (channel === "focal") return focal;
+  if (channel === "focus") return focus;
+  const [vector, axis] = channel.split(".") as ["position" | "target", "x" | "y" | "z"];
+  return camera[vector][axis === "x" ? 0 : axis === "y" ? 1 : 2];
 }
 
 export function sampleParams(tracks: KeyTracks, t: number, base: Record<string, number>): Record<string, number> {

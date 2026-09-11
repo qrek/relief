@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import * as THREE from "three";
-import { useEditor, useSelectedObject, type PanelId } from "../store";
+import { CAMERA_ID, useEditor, useSelectedObject, type PanelId } from "../store";
 import { useRuntime } from "../runtime";
 import { sceneClock } from "../lib/clock";
 import { Viewport } from "./Viewport";
@@ -16,7 +16,7 @@ import { StagingPanel } from "./panels/StagingPanel";
 import { ExportPanel } from "./panels/ExportPanel";
 import { LookPanel } from "./panels/LookPanel";
 import { Timeline } from "./panels/Timeline";
-import { ALL_TRANSFORM_CHANNELS } from "../lib/keyframes";
+import { ALL_CAMERA_CHANNELS, ALL_TRANSFORM_CHANNELS } from "../lib/keyframes";
 
 export default function Editor() {
   const activePanel = useEditor((s) => s.activePanel);
@@ -220,7 +220,8 @@ function useKeyboardShortcuts() {
           break;
         case "k":
         case "K":
-          if (s.selectedId) s.toggleKeys({ kind: "object", id: s.selectedId, channels: ALL_TRANSFORM_CHANNELS }, sceneClock.clipTime);
+          if (s.selectedId === CAMERA_ID) s.toggleKeys({ kind: "camera", channels: ALL_CAMERA_CHANNELS }, sceneClock.clipTime);
+          else if (s.selectedId) s.toggleKeys({ kind: "object", id: s.selectedId, channels: ALL_TRANSFORM_CHANNELS }, sceneClock.clipTime);
           break;
         case "1":
           s.setActivePanel("object");

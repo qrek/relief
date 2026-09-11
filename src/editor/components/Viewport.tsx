@@ -4,12 +4,12 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { ContactShadows, Grid, OrbitControls, TransformControls } from "@react-three/drei";
 import { Columns2, Film, Grid3x3, Orbit, Pause, Play, Video } from "lucide-react";
-import { hasKeys, sampleTransform } from "../lib/keyframes";
+import { hasKeys, sampleCamera, sampleChannel, sampleTransform } from "../lib/keyframes";
 import { useClockTick } from "./useClockTick";
 import { splitLayout } from "../lib/viewLayout";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { currentFormat, useEditor, type Quality, type ViewMode } from "../store";
+import { CAMERA_ID, currentFormat, useEditor, type Quality, type ViewMode } from "../store";
 import { useRuntime } from "../runtime";
 import type { Motion, PartInfo, SceneObject, Staging } from "../types";
 import { DepthOfFieldPass, focalToFov } from "../lib/postFx";
@@ -553,6 +553,27 @@ function SceneContent() {
   }, [resetSignal, viewMode, cameraView ? null : cameraState, freeCamera, freeTarget]);
 
   const lightSelected = staging.lights.find((l) => l.id === selectedLightId);
+  const cameraSelected = selectedId === CAMERA_ID;
+  const [cameraObj3D, setCameraObj3D] = useState<THREE.Object3D | null>(null);
+  const select = useEditor((s) => s.select);
+
+  // A keyed camera is where its keys say, every frame, unless a hand is on
+  // it: then the hand leads and the key is written on release.
+  useFrame(() => {
+    const p = useEditor.getState().project;
+    if (!hasKeys(p.camera.keys) || useRuntime.getState().interacting) return;
+    const shot = useRuntime.getState().camera;
+    if (!shot) return;
+    const s = sampleCamera(p.camera.keys, sceneClock.clipTime, p.camera, p.staging.focalLength, p.staging.focusDistance);
+    shot.position.set(...s.position);
+    shotControls.current?.target.set(...s.target);
+    shot.lookAt(...s.target);
+    const fov = focalToFov(s.focal);
+    if (Math.abs(shot.fov - fov) > 1e-4) {
+      shot.fov = fov;
+      shot.updateProjectionMatrix();
+    }
+  });
   const placeLight = (coalesce: boolean) => {
     if (!lightObj3D || !lightSelected) return;
     setLight(lightSelected.id, placementFromPosition(lightObj3D.position, lightSelected.type), coalesce);
@@ -579,6 +600,9 @@ function SceneContent() {
         />
       )}
       <LightMarkers lights={staging.lights} selectedId={selectedLightId} onSelect={selectLight} bindSelected={setLightObj3D} />
+      {viewMode !== "camera" && (
+        <CameraHandle selected={cameraSelected} onSelect={() => select(CAMERA_ID)} bindSelected={setCameraObj3D} />
+      )}
       {viewMode !== "camera" && (
         <CameraFrame
           distance={staging.depthOfField ? staging.focusDistance : Math.hypot(
@@ -612,6 +636,27 @@ function SceneContent() {
           <ObjectNode key={o.id} obj={o} />
         ))}
       </Suspense>
+
+      {cameraObj3D && cameraSelected && viewMode !== "camera" && (
+        <TransformControls
+          object={cameraObj3D}
+          mode="translate"
+          camera={viewCamera}
+          domElement={gizmoElement}
+          onMouseDown={() => {
+            useRuntime.getState().setInteracting(true);
+            useRuntime.setState({ dragging: true });
+          }}
+          onObjectChange={() => {
+            const o = cameraObj3D;
+            setCamera(o.position.toArray() as [number, number, number], useEditor.getState().project.camera.target);
+          }}
+          onMouseUp={() => {
+            useRuntime.getState().setInteracting(false);
+            useRuntime.setState({ dragging: false });
+          }}
+        />
+      )}
 
       {lightObj3D && lightSelected && (
         <TransformControls
@@ -689,6 +734,51 @@ function SceneContent() {
         />
       )}
     </>
+  );
+}
+
+/**
+ * Something to grab where the camera is: an invisible ball at its position
+ * that selects it on click and carries the gizmo when it is selected. It
+ * follows the camera every frame except while it is being dragged.
+ */
+function CameraHandle({
+  selected,
+  onSelect,
+  bindSelected,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  bindSelected: (obj: THREE.Object3D | null) => void;
+}) {
+  const group = useRef<THREE.Group>(null);
+  const camera = useThree((s) => s.camera);
+  useLayoutEffect(() => {
+    if (!selected) return;
+    bindSelected(group.current);
+    return () => bindSelected(null);
+  }, [selected, bindSelected]);
+  useFrame(() => {
+    if (group.current && !useRuntime.getState().dragging) group.current.position.copy(camera.position);
+  });
+  return (
+    <group ref={group} userData={{ overlay: true }}>
+      <mesh
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
+        onPointerOver={() => {
+          document.body.style.cursor = "pointer";
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = "";
+        }}
+      >
+        <sphereGeometry args={[0.45, 12, 8]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </group>
   );
 }
 
@@ -832,6 +922,7 @@ function SceneRenderer({
   // Effect sizes are written in pixels of the export, so the screen, whatever
   // its size, shows the same grain and the same glow the file will have.
   const referenceHeight = useEditor((s) => currentFormat(s.project).height);
+  const cameraKeys = useEditor((s) => s.project.camera.keys);
   useEffect(
     () => () => {
       pass.dispose();
@@ -868,7 +959,8 @@ function SceneRenderer({
           return;
         }
         pass.render(gl, scene, shot, {
-          focus: staging.focusDistance,
+          // A keyed focus is a pull, so it is read off its keys here.
+          focus: sampleChannel(cameraKeys.focus, sceneClock.clipTime, staging.focusDistance),
           aperture: staging.aperture,
           focalLength: staging.focalLength,
           maxBlur: staging.maxBlur,

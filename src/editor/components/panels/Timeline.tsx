@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { Pause, Play, X } from "lucide-react";
 import { useEditor } from "../../store";
 import { sceneClock } from "../../lib/clock";
-import { TRANSFORM_CHANNELS, hasKeys, type TrackRef } from "../../lib/keyframes";
+import { CAMERA_CHANNELS, TRANSFORM_CHANNELS, hasKeys, type TrackRef } from "../../lib/keyframes";
 import { effectById } from "../../presets/effects";
 import type { Ease, EffectInstance, Key, KeyTracks, Project } from "../../types";
 import { Button, IconButton } from "../ui";
@@ -81,9 +81,40 @@ function effectRows(ownerId: string, ownerLabel: string, instance: EffectInstanc
   return rows;
 }
 
+const CAMERA_LABELS: Record<keyof typeof CAMERA_CHANNELS, string> = {
+  position: "Position",
+  target: "Looks at",
+  focal: "Focal length",
+  focus: "Focus",
+};
+
 /** Everything keyed in the project, the selection first. */
 function buildRows(project: Project, selectedId: string | null): Row[] {
   const rows: Row[] = [];
+  if (hasKeys(project.camera.keys)) {
+    const keys = project.camera.keys;
+    const channels = keyedChannels(keys);
+    rows.push({
+      id: "camera",
+      label: "Camera",
+      group: true,
+      track: { kind: "camera", channels },
+      times: timesOf(keys, channels),
+      ease: easeOf(keys, channels),
+    });
+    for (const part of Object.keys(CAMERA_CHANNELS) as (keyof typeof CAMERA_CHANNELS)[]) {
+      const own = CAMERA_CHANNELS[part].filter((c) => (keys[c]?.length ?? 0) > 0);
+      if (own.length === 0) continue;
+      rows.push({
+        id: `camera:${part}`,
+        label: CAMERA_LABELS[part],
+        group: false,
+        track: { kind: "camera", channels: own },
+        times: timesOf(keys, own),
+        ease: easeOf(keys, own),
+      });
+    }
+  }
   const objects = [...project.objects].sort((a, b) => (a.id === selectedId ? -1 : b.id === selectedId ? 1 : 0));
   for (const o of objects) {
     if (hasKeys(o.keys)) {
