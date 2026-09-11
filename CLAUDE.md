@@ -174,10 +174,12 @@ compositions finies (sujet, type, lumière, objectif, look) rendues par l'app el
 dans `public/templates/`. Une première série livrée en 2026 avait été jugée plate et supprimée ;
 la règle depuis est **peu, mais très bien**. Un template est une affiche, pas un objet sur un
 fond : il part d'une référence visuelle, se juge à l'image à la taille d'export, et n'entre dans
-la liste que lorsqu'il tient la comparaison. Trois pour l'instant : « Like no one » (affiche riso,
-titre derrière, galet à facettes devant, trame quatre couleurs), « Open sign » (un mot en diodes
-vertes sur un panneau LED, avec sa lueur) et « Carpe feed » (chrome liquide sur papier, titre
-condensé, petites lignes en bas). Pour en ajouter un : construire la scène dans l'app, capturer le
+la liste que lorsqu'il tient la comparaison. Trois pour l'instant, et ils disent tous « Relief » : « Riso poster » (RE / LIEF derrière,
+galet à facettes devant, trame quatre couleurs), « LED sign » (RELIEF en diodes vertes, police
+pixel Silkscreen et lettres presque plates : en grand angle, les flancs d'une extrusion épaisse
+remplissent les contre-formes) et « Chrome print » (chrome liquide sur papier, « RELIEF. MORE
+THAN FLAT. », petites lignes en bas). Les ids de fichiers (`like-no-one`, `open-sign`,
+`carpe-feed`) sont restés ceux d'origine. Pour en ajouter un : construire la scène dans l'app, capturer le
 projet en JSON et une vignette 540 px, puis `add_template.py` (dans le scratchpad de session) ou à
 la main dans `presets/templates.ts` avec des ids fixes lisibles.
 
@@ -257,7 +259,7 @@ d'un soleil est dessiné à six unités, pas à la distance réelle de la lumiè
 de tout écran.
 Les anciens champs `lightColor/Intensity/Azimuth/Elevation` sont migrés en lumière clé par
 `normalizeStaging`, au même endroit, ce qui garde les scènes enregistrées et les templates
-identiques au pixel près (vérifié sur « Like no one »).
+identiques au pixel près (vérifié sur « Riso poster »).
 
 Spots et points ont `decay` à zéro : le curseur veut dire luminosité, pas watts, et reculer une
 lumière pour adoucir son ombre ne l'éteint pas. Les ombres portées (`castShadows`) tombent sur les
