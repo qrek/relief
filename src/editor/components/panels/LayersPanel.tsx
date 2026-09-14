@@ -18,12 +18,16 @@ export function LayersPanel() {
   const moveObject = useEditor((s) => s.moveObject);
   const toggleLock = useEditor((s) => s.toggleLock);
   const partsById = useRuntime((s) => s.parts);
+  const toggleFolded = useEditor((s) => s.toggleFolded);
 
   return (
     <div className="flex max-h-[52vh] flex-col">
       <div className="flex items-center justify-between px-3 py-2">
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">Layers</h3>
-        <span className="text-[11px] text-neutral-600">{objects.length}</span>
+        <span className="flex items-center gap-1 text-[11px] text-neutral-600">
+          {objects.length}
+          <IconButton icon={ChevronUp} title="Fold the layers away" onClick={() => toggleFolded("layers")} />
+        </span>
       </div>
       <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1.5 pb-2">
         <li>

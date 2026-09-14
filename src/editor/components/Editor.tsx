@@ -19,11 +19,15 @@ import { Timeline } from "./panels/Timeline";
 import { ALL_CAMERA_CHANNELS, ALL_TRANSFORM_CHANNELS } from "../lib/keyframes";
 import { importDroppedFiles } from "../lib/importers";
 import { CARD, GAP, LEFT_INSET, RAIL_WIDTH, RIGHT_INSET } from "./layout";
+import { IconButton } from "./ui";
+import { PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
 
 export default function Editor() {
   const activePanel = useEditor((s) => s.activePanel);
   const setActivePanel = useEditor((s) => s.setActivePanel);
   const timelineOpen = useEditor((s) => s.timelineOpen);
+  const folded = useEditor((s) => s.folded);
+  const toggleFolded = useEditor((s) => s.toggleFolded);
   const selected = useSelectedObject();
 
   useKeyboardShortcuts();
@@ -79,13 +83,39 @@ export default function Editor() {
           )}
         </div>
         <div className="absolute z-20" style={{ left: GAP, top: GAP }}>
-          <ToolRail />
+          {folded.rail ? (
+            <div className={`p-1 ${CARD}`}>
+              <IconButton icon={PanelLeftOpen} size="md" title="Show the tools" onClick={() => toggleFolded("rail")} />
+            </div>
+          ) : (
+            <ToolRail />
+          )}
         </div>
-        <div className={`absolute z-20 w-56 ${CARD}`} style={{ left: GAP + RAIL_WIDTH + GAP, top: GAP }}>
-          <LayersPanel />
-        </div>
-        <aside className={`absolute z-20 flex w-80 flex-col overflow-hidden ${CARD}`} style={{ right: GAP, top: GAP, bottom: GAP }}>
-          <nav className="flex border-b border-white/5">
+        {!folded.layers ? (
+          <div className={`absolute z-20 w-56 ${CARD}`} style={{ left: GAP + RAIL_WIDTH + GAP, top: GAP }}>
+            <LayersPanel />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => toggleFolded("layers")}
+            title="Show the layers"
+            className={`absolute z-20 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 hover:text-neutral-200 ${CARD}`}
+            style={{ left: GAP + RAIL_WIDTH + GAP, top: GAP }}
+          >
+            Layers
+          </button>
+        )}
+        {folded.panel && (
+          <div className={`absolute z-20 p-1 ${CARD}`} style={{ right: GAP, top: GAP }}>
+            <IconButton icon={PanelRightOpen} size="md" title="Show the panel (Tab shows everything)" onClick={() => toggleFolded("panel")} />
+          </div>
+        )}
+        <aside
+          className={`absolute z-20 flex w-80 flex-col overflow-hidden ${CARD}`}
+          style={{ right: GAP, top: GAP, bottom: GAP, display: folded.panel ? "none" : undefined }}
+        >
+          <nav className="flex items-stretch border-b border-white/5">
             {panels.map((p) => (
               <button
                 key={p.id}
@@ -101,6 +131,9 @@ export default function Editor() {
                 {p.label}
               </button>
             ))}
+            <div className="flex items-center pr-1">
+              <IconButton icon={PanelRightClose} title="Fold the panel away (Tab folds everything)" onClick={() => toggleFolded("panel")} />
+            </div>
           </nav>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {tab === "object" && <ObjectPanel />}
@@ -278,6 +311,10 @@ function useKeyboardShortcuts() {
           break;
         case "0":
           s.setViewMode(s.viewMode === "camera" ? "free" : "camera");
+          break;
+        case "Tab":
+          e.preventDefault();
+          s.toggleAllFolded();
           break;
         case " ":
           e.preventDefault();

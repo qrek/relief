@@ -431,6 +431,11 @@ type EditorState = {
   /** Shows the timeline under the viewport. */
   timelineOpen: boolean;
   setTimelineOpen: (open: boolean) => void;
+  /** Which floating cards are folded to a stub. */
+  folded: { rail: boolean; layers: boolean; panel: boolean };
+  toggleFolded: (card: "rail" | "layers" | "panel") => void;
+  /** Folds every card, or unfolds them all: the way to see the frame alone. */
+  toggleAllFolded: () => void;
   /**
    * Keys the channels at that moment, at their current values; if every one
    * of them already has a key there, removes those keys instead.
@@ -592,6 +597,15 @@ export const useEditor = create<EditorState>()(
             p.clip = { duration: Math.min(60, Math.max(0.5, seconds)) };
           }),
         timelineOpen: false,
+        folded: { rail: false, layers: false, panel: false },
+        toggleFolded: (card) => set((s) => ({ folded: { ...s.folded, [card]: !s.folded[card] } })),
+        toggleAllFolded: () =>
+          set((s) => {
+            const any = s.folded.rail || s.folded.layers || s.folded.panel || s.timelineOpen;
+            return any
+              ? { folded: { rail: false, layers: false, panel: false } }
+              : { folded: { rail: true, layers: true, panel: true } };
+          }),
         setTimelineOpen: (timelineOpen) => set({ timelineOpen }),
         toggleKeys: (track, t) => {
           mutate((p) =>

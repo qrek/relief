@@ -6,7 +6,8 @@ import { SHAPES } from "../../presets/shapes";
 import { ObjectLibrary } from "./ObjectLibrary";
 import { MediaLibrary } from "./MediaLibrary";
 import { mediaTypeOf } from "../../lib/media";
-import { ALargeSmall, Box, Image as ImageIcon, Move, RotateCw, Scaling, Shapes, Type, type LucideIcon } from "lucide-react";
+import { ALargeSmall, Box, Image as ImageIcon, Move, PanelLeftClose, RotateCw, Scaling, Shapes, Type, type LucideIcon } from "lucide-react";
+import { IconButton } from "../ui";
 
 export function ToolRail() {
   const addText = useEditor((s) => s.addText);
@@ -14,6 +15,7 @@ export function ToolRail() {
   const addCover = useEditor((s) => s.addCover);
   const addLabel = useEditor((s) => s.addLabel);
   const transformMode = useEditor((s) => s.transformMode);
+  const toggleFolded = useEditor((s) => s.toggleFolded);
   const setTransformMode = useEditor((s) => s.setTransformMode);
   const open = useEditor((s) => s.library);
   const setOpen = useEditor((s) => s.setLibrary);
@@ -73,6 +75,9 @@ export function ToolRail() {
           <m.icon size={17} strokeWidth={1.75} />
         </RailButton>
       ))}
+
+      <div className="my-1 h-px w-8 bg-white/10" />
+      <IconButton icon={PanelLeftClose} title="Fold the tools away (Tab folds everything)" onClick={() => toggleFolded("rail")} />
 
       {open && (
         <div ref={popover} className="absolute left-16 top-2 z-20">
