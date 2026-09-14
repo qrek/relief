@@ -6,6 +6,7 @@ import type { Project } from "../../types";
 import { Button, IconButton } from "../ui";
 import { CircleHelp, FilePlus2, FolderOpen, LayoutGrid, Redo2, Save, Undo2 } from "lucide-react";
 import { SceneLibrary } from "./SceneLibrary";
+import { downloadBlob } from "../../lib/export";
 import { ReliefMark } from "../Logo";
 
 export function TopBar() {
@@ -24,12 +25,7 @@ export function TopBar() {
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${project.name.replace(/[^\w-]+/g, "_") || "project"}.relief.json`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadBlob(blob, `${project.name.replace(/[^\w-]+/g, "_") || "project"}.relief.json`);
   };
 
   return (

@@ -8,8 +8,7 @@ import {
   extensionFor,
   maxExportSize,
   renderImage,
-  type ImageExportOptions,
-} from "../../lib/export";
+  type ImageExportOptions, exportFileName } from "../../lib/export";
 import {
   FPS_CHOICES,
   MAX_VIDEO_SECONDS,
@@ -136,11 +135,11 @@ async function deliver(files: ExportFile[], zipName: string): Promise<string> {
   if (files.length === 0) throw new Error("Nothing was rendered");
   if (files.length === 1) {
     downloadBlob(files[0].blob, files[0].name);
-    return `Saved ${files[0].name}`;
+    return `Saved ${exportFileName(files[0].name)}`;
   }
   const zip = await zipFiles(files);
   downloadBlob(zip, zipName);
-  return `Saved ${files.length} files in ${zipName}`;
+  return `Saved ${files.length} files in ${exportFileName(zipName)}`;
 }
 
 function ImageExport() {

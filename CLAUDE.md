@@ -21,6 +21,10 @@ https://relief-seven-gray.vercel.app (l'alias long `relief-bacholiertheo-5383s-p
 vit dans le navigateur de la personne qui l'ouvre. La route `/api/dev-snapshot` répond 404 en
 production, `/api/fonts` fonctionne partout.
 
+Tout fichier écrit par Relief (image, vidéo, zip et ses entrées, projet `.relief.json`) est
+préfixé `rlf_` (`exportFileName` dans `lib/export.ts`, appliqué par `downloadBlob` et par les noms
+de `batch.ts`), pour se retrouver dans un dossier de téléchargements.
+
 ## Commandes
 - `npm run dev` : serveur de dev sur http://localhost:3000
 - `npm run build` : build de production (à lancer avant de considérer une feature terminée)
@@ -40,7 +44,8 @@ viewport occupe tout l'écran sous la barre, et le rail d'outils, la carte des c
 à onglets et la timeline sont des cartes arrondies détachées des bords (`components/layout.ts` :
 `GAP`, `RAIL_WIDTH`, `PANEL_WIDTH`, `LEFT_INSET`, `RIGHT_INSET`, `CARD`). L'image est ajustée
 dans la pièce que le rail laisse libre ; le panneau de droite, lui, **flotte par-dessus l'image**,
-qui continue dessous (`RIGHT_INSET` ne vaut que la marge). Chaque carte se **replie** en un talon
+qui continue dessous (`RIGHT_INSET` ne vaut que la marge). Le panneau de droite prend la hauteur de son contenu (`maxHeight` sur la pièce, défilement au-delà).
+Chaque carte se **replie** en un talon
 (`folded` dans le store : rail, calques, panneau ; la timeline se ferme) et Tab replie ou rouvre
 tout, pour voir le cadre seul. Les pastilles du bas et l'avis de vue libre se centrent sur la pièce
 (`CENTRE_SHIFT`). Un nouveau projet s'ouvre en 16:9. Les onglets suivent trois niveaux : **Object** (la sélection),

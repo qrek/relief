@@ -165,7 +165,15 @@ export async function renderImage(opts: ImageExportOptions): Promise<Blob> {
   }
 }
 
-export function downloadBlob(blob: Blob, filename: string) {
+/** Every file Relief writes is signed with this, so it is found again in a downloads folder. */
+export const EXPORT_PREFIX = "rlf_";
+
+export function exportFileName(name: string): string {
+  return name.startsWith(EXPORT_PREFIX) ? name : EXPORT_PREFIX + name;
+}
+
+export function downloadBlob(blob: Blob, rawName: string) {
+  const filename = exportFileName(rawName);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

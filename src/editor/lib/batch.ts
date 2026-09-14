@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { zipSync } from "fflate";
 import { useRuntime } from "../runtime";
-import { renderImage, type ImageExportOptions } from "./export";
+import { renderImage, type ImageExportOptions, exportFileName } from "./export";
 import { renderVideo, type VideoExportOptions } from "./video";
 import { CANVAS_FORMATS } from "../presets/scene";
 import type { CanvasFormat, Project } from "../types";
@@ -89,7 +89,7 @@ export function resolveFormat(project: Project, id: string): CanvasFormat | null
 }
 
 function fileName(project: Project, format: CanvasFormat, width: number, height: number, ext: string) {
-  const base = project.name.replace(/[^\w-]+/g, "_") || "export";
+  const base = exportFileName(project.name.replace(/[^\w-]+/g, "_") || "export");
   return `${base}_${format.id}_${width}x${height}.${ext}`;
 }
 

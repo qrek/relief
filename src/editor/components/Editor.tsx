@@ -113,7 +113,8 @@ export default function Editor() {
         )}
         <aside
           className={`absolute z-20 flex w-80 flex-col overflow-hidden ${CARD}`}
-          style={{ right: GAP, top: GAP, bottom: GAP, display: folded.panel ? "none" : undefined }}
+          // As tall as what it holds, never taller than the room: the picture shows under the rest.
+          style={{ right: GAP, top: GAP, maxHeight: `calc(100% - ${GAP * 2}px)`, display: folded.panel ? "none" : undefined }}
         >
           <nav className="flex items-stretch border-b border-white/5">
             {panels.map((p) => (
