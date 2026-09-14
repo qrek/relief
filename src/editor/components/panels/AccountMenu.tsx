@@ -96,7 +96,12 @@ export function AccountMenu() {
     try {
       await fn();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      setError(
+        /provider is not enabled/i.test(message)
+          ? "Google sign-in is not switched on for this Relief yet. The email link works in the meantime."
+          : message,
+      );
     } finally {
       setBusy(false);
     }
