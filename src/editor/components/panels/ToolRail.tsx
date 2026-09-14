@@ -6,7 +6,9 @@ import { SHAPES } from "../../presets/shapes";
 import { ObjectLibrary } from "./ObjectLibrary";
 import { MediaLibrary } from "./MediaLibrary";
 import { mediaTypeOf } from "../../lib/media";
-import { ALargeSmall, Box, Image as ImageIcon, Move, PanelLeftClose, RotateCw, Scaling, Shapes, Type, type LucideIcon } from "lucide-react";
+import { ALargeSmall, Box, Image as ImageIcon, Lightbulb, Move, PanelLeftClose, Plus, RotateCw, Scaling, Shapes, Type, type LucideIcon } from "lucide-react";
+import { LIGHT_RIGS } from "../../presets/lights";
+import type { LightType } from "../../types";
 import { IconButton } from "../ui";
 
 export function ToolRail() {
@@ -14,6 +16,9 @@ export function ToolRail() {
   const addShape = useEditor((s) => s.addShape);
   const addCover = useEditor((s) => s.addCover);
   const addLabel = useEditor((s) => s.addLabel);
+  const addLight = useEditor((s) => s.addLight);
+  const setStaging = useEditor((s) => s.setStaging);
+  const selectLight = useEditor((s) => s.selectLight);
   const transformMode = useEditor((s) => s.transformMode);
   const toggleFolded = useEditor((s) => s.toggleFolded);
   const setTransformMode = useEditor((s) => s.setTransformMode);
@@ -61,6 +66,9 @@ export function ToolRail() {
       <RailButton label="Cover" hint="Add an image or video with effects (C)" active={open === "media"} onClick={() => toggle("media")}>
         <ImageIcon size={18} strokeWidth={1.75} />
       </RailButton>
+      <RailButton label="Light" hint="Add a light: a sun, a spot or a point, or a whole rig" active={open === "lights"} onClick={() => toggle("lights")}>
+        <Lightbulb size={18} strokeWidth={1.75} />
+      </RailButton>
 
       <div className="my-2 h-px w-8 bg-white/10" />
 
@@ -83,6 +91,53 @@ export function ToolRail() {
         <div ref={popover} className="absolute left-16 top-2 z-20">
           {open === "objects" ? (
             <ObjectLibrary onClose={() => setOpen(null)} />
+          ) : open === "lights" ? (
+            <div className="w-64 rounded-lg border border-white/10 bg-neutral-900 p-3 shadow-2xl">
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">Add a light</div>
+              <div className="mb-3 flex gap-1">
+                {(
+                  [
+                    ["sun", "Sun", "Parallel light, like the sun: direction only"],
+                    ["spot", "Spot", "A cone of light from a point, with a soft edge"],
+                    ["point", "Point", "A bulb: light in every direction from a point"],
+                  ] as [LightType, string, string][]
+                ).map(([type, label, hint]) => (
+                  <button
+                    key={type}
+                    type="button"
+                    title={hint}
+                    onClick={() => addLight(type)}
+                    className="flex flex-1 items-center justify-center gap-1 rounded bg-white/10 px-2 py-1.5 text-[11px] text-neutral-200 hover:bg-white/15"
+                  >
+                    <Plus size={12} strokeWidth={1.75} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Rigs, replacing the lights</div>
+              <div className="flex flex-col">
+                {LIGHT_RIGS.map((rig) => (
+                  <button
+                    key={rig.id}
+                    type="button"
+                    title={rig.blurb}
+                    onClick={() => {
+                      const lights = rig.lights();
+                      setStaging({ lights }, false);
+                      selectLight(lights[0]?.id ?? null);
+                      setOpen(null);
+                    }}
+                    className="rounded px-2 py-1.5 text-left hover:bg-white/10"
+                  >
+                    <div className="text-[11.5px] text-neutral-200">{rig.name}</div>
+                    <div className="text-[10.5px] leading-snug text-neutral-500">{rig.blurb}</div>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] leading-relaxed text-neutral-500">
+                A light is drawn in the set: click it to select it, drag it to place it. It always aims at the subject.
+              </p>
+            </div>
           ) : open === "media" ? (
             <MediaLibrary
               onClose={() => setOpen(null)}

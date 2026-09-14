@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
+  LightType,
   KeyTracks,
   Ease,
   CoverObject,
@@ -64,7 +65,7 @@ export type PanelId = "object" | "material" | "effects" | "scene" | "look" | "ex
  */
 export type Quality = "draft" | "balanced" | "fine";
 /** Which add-object popover the tool rail is showing. */
-export type LibraryId = "shapes" | "objects" | "media" | null;
+export type LibraryId = "shapes" | "objects" | "media" | "lights" | null;
 
 const HISTORY_LIMIT = 60;
 const COALESCE_MS = 400;
@@ -418,6 +419,9 @@ type EditorState = {
   setShowGrid: (v: boolean) => void;
   selectLight: (id: string | null) => void;
   setLight: (id: string, patch: Partial<SceneLight>, coalesce?: boolean) => void;
+  /** Adds a light the way an object is added: it appears, drawn in the set, and is selected. */
+  addLight: (type: LightType) => string;
+  removeLight: (id: string) => void;
 
   addText: (partial?: Partial<TextObject>) => string;
   addShape: (svg: string, name: string) => string;
@@ -544,6 +548,16 @@ export const useEditor = create<EditorState>()(
         // A light and an object are never selected together: one gizmo at a time.
         selectLight: (id) =>
           set(id ? { selectedLightId: id, selectedId: null, selectedPartId: null, activePanel: "scene" } : { selectedLightId: null }),
+        addLight: (type) => {
+          const light = createLight(type);
+          get().setStaging({ lights: [...get().project.staging.lights, light] }, false);
+          set({ selectedLightId: light.id, selectedId: null, selectedPartId: null, activePanel: "scene", library: null });
+          return light.id;
+        },
+        removeLight: (id) => {
+          get().setStaging({ lights: get().project.staging.lights.filter((l) => l.id !== id) }, false);
+          if (get().selectedLightId === id) set({ selectedLightId: null });
+        },
         setLight: (id, patch, coalesce = true) => {
           const lights = get().project.staging.lights.map((l) => (l.id === id ? { ...l, ...patch } : l));
           get().setStaging({ lights }, coalesce);

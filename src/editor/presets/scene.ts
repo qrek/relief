@@ -1,5 +1,4 @@
 import type { CanvasFormat, EnvironmentId, Staging } from "../types";
-import { DEFAULT_KEY_LIGHT } from "./lights";
 
 /** The photographs of places drei ships; the studios in presets/studios.ts come before them. */
 export const ENVIRONMENTS: { id: EnvironmentId; name: string }[] = [
@@ -23,7 +22,8 @@ export const DEFAULT_STAGING: Staging = {
   envBlur: 0.6,
   background: "#0e0e10",
   transparent: false,
-  lights: [{ ...DEFAULT_KEY_LIGHT }],
+  // A new scene is lit by its environment alone; a light is added like an object.
+  lights: [],
   castShadows: false,
   shadowCatcher: true,
   shadows: true,

@@ -3,7 +3,7 @@
 import { CAMERA_ID, useEditor } from "../../store";
 import { useRuntime } from "../../runtime";
 import { IconButton } from "../ui";
-import { ALargeSmall, Box, ChevronDown, ChevronUp, Eye, EyeOff, Image as ImageIcon, Lock, LockOpen, Shapes, Type, Video, X } from "lucide-react";
+import { ALargeSmall, Box, ChevronDown, ChevronUp, Eye, EyeOff, Image as ImageIcon, Lightbulb, Lock, LockOpen, Shapes, Sun, Type, Video, X } from "lucide-react";
 
 const KIND_ICON = { text: Type, shape: Shapes, model: Box, cover: ImageIcon, label: ALargeSmall } as const;
 
@@ -19,6 +19,11 @@ export function LayersPanel() {
   const toggleLock = useEditor((s) => s.toggleLock);
   const partsById = useRuntime((s) => s.parts);
   const toggleFolded = useEditor((s) => s.toggleFolded);
+  const lights = useEditor((s) => s.project.staging.lights);
+  const selectedLightId = useEditor((s) => s.selectedLightId);
+  const selectLight = useEditor((s) => s.selectLight);
+  const setLight = useEditor((s) => s.setLight);
+  const removeLight = useEditor((s) => s.removeLight);
 
   return (
     <div className="flex max-h-[52vh] flex-col">
@@ -42,6 +47,27 @@ export function LayersPanel() {
             <span className="flex-1 truncate">Camera</span>
           </div>
         </li>
+        {lights.map((light) => {
+          const active = light.id === selectedLightId;
+          const Icon = light.type === "sun" ? Sun : Lightbulb;
+          return (
+            <li key={light.id}>
+              <div
+                onClick={() => selectLight(light.id)}
+                className={`group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs ${
+                  active ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "text-neutral-300 hover:bg-white/5"
+                }`}
+              >
+                <Icon size={13} strokeWidth={1.75} className={`shrink-0 ${active ? "text-[var(--accent)]" : "text-neutral-500"}`} />
+                <span className={`flex-1 truncate ${light.enabled ? "" : "line-through opacity-50"}`}>{light.name}</span>
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
+                  <IconButton icon={light.enabled ? Eye : EyeOff} title={light.enabled ? "Switch off" : "Switch on"} onClick={() => setLight(light.id, { enabled: !light.enabled }, false)} />
+                  <IconButton icon={X} title="Delete" danger onClick={() => removeLight(light.id)} />
+                </div>
+              </div>
+            </li>
+          );
+        })}
         {[...objects].reverse().map((o, idx) => {
           const active = o.id === selectedId;
           const parts = partsById[o.id] ?? [];

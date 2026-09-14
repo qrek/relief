@@ -247,7 +247,11 @@ teinte de la diode, jamais vers le blanc ; la saturation force la couleur. Le su
 la lueur d'un vrai panneau.
 
 ## Lumières, ombres, environnement
-`staging.lights` est une liste de `SceneLight` (soleil, spot, point), chacune placée comme le
+`staging.lights` est une liste de `SceneLight` (soleil, spot, point). **Une nouvelle scène n'en a
+aucune** : l'environnement seul l'éclaire, et une lumière s'ajoute comme un objet, par le bouton
+Light du rail (`addLight`, qui la sélectionne) ou par un rig ; elle apparaît dans les calques sous
+la caméra, avec son interrupteur et sa croix. Les templates gardent leur lumière clé (issue de
+leurs anciens champs à la migration). Chacune est placée comme le
 ferait un photographe : azimut, hauteur et distance sur une sphère autour de l'origine, toujours
 braquée sur le sujet. La convention d'azimut est celle de l'unique lumière d'avant (zéro devant le
 sujet, positif à droite) ; `lightPosition()` dans `components/Lights.tsx` en est la seule définition.
