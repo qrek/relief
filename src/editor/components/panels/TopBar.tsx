@@ -8,6 +8,7 @@ import { CircleHelp, FilePlus2, FolderOpen, LayoutGrid, Redo2, Save, Undo2 } fro
 import { SceneLibrary } from "./SceneLibrary";
 import { downloadBlob } from "../../lib/export";
 import { ReliefMark } from "../Logo";
+import { AccountMenu } from "./AccountMenu";
 
 export function TopBar() {
   const project = useEditor((s) => s.project);
@@ -45,7 +46,8 @@ export function TopBar() {
         <IconButton icon={Redo2} size="md" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" />
       </div>
       <div className="flex-1" />
-      <Button variant="default" onClick={() => setScenesOpen(true)} title="Templates and your saved scenes" className="flex items-center gap-1.5">
+      <AccountMenu />
+      <Button variant="default" onClick={() => setScenesOpen(true)} title="Templates, your saved scenes and your cloud projects" className="flex items-center gap-1.5">
         <LayoutGrid size={13} strokeWidth={1.75} />
         Scenes
       </Button>

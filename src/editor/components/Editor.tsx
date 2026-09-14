@@ -18,6 +18,8 @@ import { LookPanel } from "./panels/LookPanel";
 import { Timeline } from "./panels/Timeline";
 import { ALL_CAMERA_CHANNELS, ALL_TRANSFORM_CHANNELS } from "../lib/keyframes";
 import { importDroppedFiles } from "../lib/importers";
+import { useCloud } from "../lib/cloud";
+import { saveToCloud } from "./panels/AccountMenu";
 import { CARD, GAP, LEFT_INSET, RAIL_WIDTH, RIGHT_INSET } from "./layout";
 import { IconButton } from "./ui";
 import { PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
@@ -32,6 +34,7 @@ export default function Editor() {
 
   useKeyboardShortcuts();
   useLayoutNudge();
+  useCloudAutosave();
   const drop = useFileDrop();
 
   // The second tab is the selection's own treatment: a solid has a material, a
@@ -167,6 +170,24 @@ function useLayoutNudge() {
     }, 200);
     return () => clearInterval(timer);
   }, []);
+}
+
+/**
+ * A project that is in the cloud writes itself back a few seconds after each
+ * change, while its owner is signed in. The first save is always deliberate.
+ */
+function useCloudAutosave() {
+  const project = useEditor((s) => s.project);
+  const user = useCloud((s) => s.user);
+  useEffect(() => {
+    if (!user || !project.cloudId) return;
+    const id = setTimeout(() => {
+      saveToCloud().catch(() => {
+        // The status in the account menu says it failed; nothing to add here.
+      });
+    }, 4000);
+    return () => clearTimeout(id);
+  }, [project, user]);
 }
 
 /**

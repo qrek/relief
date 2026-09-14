@@ -71,7 +71,7 @@ const HISTORY_LIMIT = 60;
 const COALESCE_MS = 400;
 // Bump whenever an object or project field is added, so normalizeProject runs on
 // projects already saved in the browser.
-const PERSIST_VERSION = 14;
+const PERSIST_VERSION = 15;
 
 export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -233,6 +233,7 @@ export function createProject(): Project {
     customFormat: { width: 1600, height: 1200 },
     camera: { position: [...DEFAULT_CAMERA.position], target: [...DEFAULT_CAMERA.target], keys: {} },
     clip: { duration: 4 },
+    cloudId: null,
   };
 }
 
@@ -365,6 +366,7 @@ export function normalizeProject(input: unknown): Project {
       keys: normalizeTracks(raw.camera?.keys),
     },
     clip: { duration: Number(raw.clip?.duration) > 0 ? Number(raw.clip?.duration) : 4 },
+    cloudId: typeof raw.cloudId === "string" ? raw.cloudId : null,
   };
 }
 
@@ -476,6 +478,8 @@ type EditorState = {
   setFormat: (formatId: string, custom?: { width: number; height: number }) => void;
   setCamera: (position: Transform["position"], target: Transform["position"]) => void;
   renameProject: (name: string) => void;
+  /** Remembers the cloud row, outside the history: it is not an edit. */
+  setCloudId: (id: string | null) => void;
   newProject: () => void;
   loadProject: (project: unknown) => void;
 
@@ -871,6 +875,7 @@ export const useEditor = create<EditorState>()(
             return { project: { ...s.project, camera: { position, target, keys } } };
           }),
         renameProject: (name) => set((s) => ({ project: { ...s.project, name } })),
+        setCloudId: (cloudId) => set((s) => ({ project: { ...s.project, cloudId } })),
         newProject: () => {
           set({ project: createProject(), selectedId: null, selectedPartId: null, past: [], future: [] });
           useRuntime.getState().requestCameraReset();

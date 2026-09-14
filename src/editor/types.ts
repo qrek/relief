@@ -317,4 +317,6 @@ export type Project = {
   camera: { position: Vec3; target: Vec3; keys: KeyTracks };
   /** The clip the keyframes live in: it loops, and a video export is one pass of it. */
   clip: { duration: number };
+  /** The row this project is saved as in the cloud, once it has been; null for a local-only project. */
+  cloudId: string | null;
 };

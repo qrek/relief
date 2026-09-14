@@ -7,6 +7,8 @@ import { assetUrl, deleteAsset, getTemplateData, listAssets, putTemplate, type A
 import { renderImage } from "../../lib/export";
 import { Button } from "../ui";
 import { X } from "lucide-react";
+import { deleteCloudProject, listCloudProjects, loadCloudProject, useCloud, type CloudProject } from "../../lib/cloud";
+import { saveToCloud } from "./AccountMenu";
 
 type SavedScene = AssetMeta & { url: string };
 
@@ -17,6 +19,26 @@ export function SceneLibrary({ onClose }: { onClose: () => void }) {
   const [scenes, setScenes] = useState<SavedScene[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const user = useCloud((s) => s.user);
+  const [cloud, setCloud] = useState<CloudProject[]>([]);
+  const refreshCloud = () => {
+    // Signed out, the shelf is simply not shown; the list is only read for a user.
+    if (!user) return;
+    listCloudProjects()
+      .then(setCloud)
+      .catch((e) => setError(e instanceof Error ? e.message : "Could not read your cloud projects"));
+  };
+  useEffect(refreshCloud, [user]);
+
+  const openCloud = async (row: CloudProject) => {
+    if (!confirm(`Open "${row.name}"? The current scene is replaced.`)) return;
+    try {
+      loadProject(normalizeProject(await loadCloudProject(row.id)));
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not open this project");
+    }
+  };
 
   const refresh = () => {
     listAssets("template")
@@ -105,6 +127,78 @@ export function SceneLibrary({ onClose }: { onClose: () => void }) {
               </button>
             ))}
           </div>
+
+          {user && (
+            <>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">In the cloud</h3>
+                <Button
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    setError(null);
+                    try {
+                      await saveToCloud();
+                      refreshCloud();
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "Could not save to the cloud");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  {project.cloudId ? "Save now" : "Save this project to the cloud"}
+                </Button>
+              </div>
+              {cloud.length === 0 ? (
+                <p className="mb-6 p-4 text-center text-[11px] leading-relaxed text-neutral-500">
+                  Nothing in the cloud yet. Save this project and it follows you to any browser.
+                </p>
+              ) : (
+                <div className="mb-6 grid grid-cols-3 gap-3">
+                  {cloud.map((row) => (
+                    <div key={row.id} className="group relative">
+                      <button
+                        type="button"
+                        onClick={() => openCloud(row)}
+                        className={`flex w-full flex-col gap-2 rounded-lg p-2 text-left hover:bg-white/10 ${
+                          row.id === project.cloudId ? "ring-1 ring-[var(--accent-edge)]" : ""
+                        }`}
+                      >
+                        <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-md bg-black/50 p-1 ring-1 ring-white/5">
+                          {row.thumbnail ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={row.thumbnail} alt="" className="h-full w-full object-contain" />
+                          ) : (
+                            <span className="text-[10px] text-neutral-600">No preview</span>
+                          )}
+                        </span>
+                        <span className="truncate text-xs font-medium text-neutral-200">{row.name}</span>
+                        <span className="text-[10.5px] text-neutral-500">
+                          {row.share_slug ? "Shared · " : ""}
+                          {new Date(row.updated_at).toLocaleDateString()}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        title="Delete from the cloud"
+                        onClick={async () => {
+                          if (!confirm(`Delete "${row.name}" from the cloud?`)) return;
+                          await deleteCloudProject(row.id);
+                          if (row.id === project.cloudId) useEditor.getState().setCloudId(null);
+                          refreshCloud();
+                        }}
+                        className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded bg-black/70 text-neutral-400 opacity-0 hover:text-red-300 group-hover:opacity-100"
+                      >
+                        <X size={13} strokeWidth={1.75} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
 
           <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">Your scenes</h3>
           {scenes.length === 0 ? (
